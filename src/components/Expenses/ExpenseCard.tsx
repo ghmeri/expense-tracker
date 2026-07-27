@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Expense } from '../../types';
 
+// Componente para mostrar tarjetas individuales de gastos
 interface Props {
   expense: Expense;
   userName: string;
