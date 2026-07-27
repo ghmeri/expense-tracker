@@ -4,8 +4,9 @@ const EXPENSES_KEY = 'gx_expenses';
 const USERS_KEY = 'gx_users';
 
 const DEFAULT_USERS: User[] = [
-  { id: 'user1', name: 'Yo', color: '#6200ee' },
-  { id: 'user2', name: 'Mi pareja', color: '#03dac6' },
+  { id: 'user1',  name: 'Yo',               color: '#6200ee' },
+  { id: 'user2',  name: 'Mi pareja',         color: '#03dac6' },
+  { id: 'shared', name: 'Cuenta conjunta',   color: '#f59e0b' },
 ];
 
 export const getExpenses = (): Expense[] => {
@@ -34,7 +35,14 @@ export const getUsers = (): User[] => {
     return DEFAULT_USERS;
   }
   try {
-    return JSON.parse(stored);
+    const users: User[] = JSON.parse(stored);
+    // Ensure shared account always exists (migration for existing installs)
+    if (!users.find(u => u.id === 'shared')) {
+      const updated = [...users, { id: 'shared', name: 'Cuenta conjunta', color: '#f59e0b' }];
+      localStorage.setItem(USERS_KEY, JSON.stringify(updated));
+      return updated;
+    }
+    return users;
   } catch {
     return DEFAULT_USERS;
   }

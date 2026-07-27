@@ -23,6 +23,7 @@ Reglas ESTRICTAS:
 - INCLUYE los productos comprados con precio POSITIVO (mayor que 0).
 - INCLUYE también los descuentos y ofertas como items con totalPrice NEGATIVO (ej: -1.50). Así la suma de todos los items coincide con el total pagado.
 - EXCLUYE: impuestos (IVA, IGF), subtotales, totales parciales, forma de pago, puntos de fidelidad, líneas de texto sin precio.
+- EXCLUYE también líneas de desglose de unidades (ej: "2 unitats x 3.85", "unitat x 1.49", "3 x 2.10") — son informativas del cálculo de cantidad, no productos independientes.
 - Para productos por peso (ej: "0.424kg x 5.99/kg = 2.54") usa el precio final (2.54) y el nombre de la línea anterior.
 - Para descuentos usa un nombre descriptivo (ej: "Descuento socio", "Oferta 2x1", "Cupón") y totalPrice negativo.
 - Normaliza los nombres: primera letra mayúscula, resto minúsculas.
