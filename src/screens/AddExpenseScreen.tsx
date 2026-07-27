@@ -260,7 +260,7 @@ export default function AddExpenseScreen({ onSave }: Props) {
   /* ─── STEP 3: REVISIÓN / ANÁLISIS ─── */
   if (step === 'review') {
     const checkedItems  = reviewItems.filter(i => i.checked);
-    const checkedTotal  = checkedItems.reduce((s, i) => s + i.totalPrice, 0);
+    const checkedTotal  = ocrTotal ?? checkedItems.reduce((s, i) => s + i.totalPrice, 0);
     const allChecked    = reviewItems.length > 0 && reviewItems.every(i => i.checked);
 
     return (

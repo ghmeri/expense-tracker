@@ -21,9 +21,10 @@ Devuelve ÚNICAMENTE un objeto JSON válido (sin markdown, sin texto extra):
 }
 Reglas ESTRICTAS:
 - INCLUYE únicamente productos físicos comprados con precio POSITIVO (mayor que 0).
-- EXCLUYE COMPLETAMENTE cualquier línea con importe negativo o cero (descuentos, ofertas, devoluciones). NO deben aparecer en items bajo ningún concepto.
-- EXCLUYE: impuestos (IVA, IGF), subtotales, totales parciales, forma de pago, puntos de fidelidad, líneas de texto sin precio.
-- EXCLUYE líneas de desglose de unidades (ej: "2 unitats x 3.85", "unitat x 1.49", "3 x 2.10") — son informativas del cálculo.
+- EXCLUYE COMPLETAMENTE cualquier línea con importe negativo o cero (descuentos, ofertas, devoluciones).
+- EXCLUYE líneas de descuento aunque tengan precio positivo: cualquier línea cuyo nombre empiece por "Dte", "Dsc", "Desc", "Dto", "Descompte", "Descuento", "Oferta", "-50%", "%" o similar.
+- EXCLUYE SIEMPRE: la línea TOTAL, SUBTOTAL, la línea de pago (Targetes, Tarjeta, Efectiu, Efectivo, Cash), IVA, IGF, puntos de fidelidad, Targetge client, líneas de texto sin precio.
+- EXCLUYE líneas de desglose de unidades (ej: "2 unitats x 3.85", "unitat x 1.49") — son informativas del cálculo.
 - Para productos por peso (ej: "0.424kg x 5.99/kg = 2.54") usa el precio final (2.54) y el nombre de la línea anterior.
 - Normaliza los nombres: primera letra mayúscula, resto minúsculas.
 - El ticket puede estar en español, catalán u otro idioma.
