@@ -19,13 +19,15 @@ Devuelve ÚNICAMENTE un objeto JSON válido (sin markdown, sin texto extra):
     {"name": "Nombre del producto", "totalPrice": 0.95}
   ]
 }
-Reglas:
-- Incluye solo los productos comprados con precio positivo
-- Ignora descuentos (importes negativos), impuestos (IVA/IGF/IVA), subtotales, forma de pago, puntos de fidelidad
-- Para productos por peso (ej: "0.424kg x 5.99/kg = 2.54") usa el precio final (2.54) y el nombre de la línea anterior
-- Normaliza los nombres: primera letra mayúscula, resto minúsculas
-- El ticket puede estar en español, catalán u otro idioma
-- total = importe final pagado (línea TOTAL)`;
+Reglas ESTRICTAS:
+- INCLUYE los productos comprados con precio POSITIVO (mayor que 0).
+- INCLUYE también los descuentos y ofertas como items con totalPrice NEGATIVO (ej: -1.50). Así la suma de todos los items coincide con el total pagado.
+- EXCLUYE: impuestos (IVA, IGF), subtotales, totales parciales, forma de pago, puntos de fidelidad, líneas de texto sin precio.
+- Para productos por peso (ej: "0.424kg x 5.99/kg = 2.54") usa el precio final (2.54) y el nombre de la línea anterior.
+- Para descuentos usa un nombre descriptivo (ej: "Descuento socio", "Oferta 2x1", "Cupón") y totalPrice negativo.
+- Normaliza los nombres: primera letra mayúscula, resto minúsculas.
+- El ticket puede estar en español, catalán u otro idioma.
+- total = importe final pagado (línea TOTAL, ya con descuentos aplicados).`;
 
 export default async function handler(req: Request): Promise<Response> {
   if (req.method === 'OPTIONS') return new Response(null, { status: 200, headers: CORS });

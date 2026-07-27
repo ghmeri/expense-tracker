@@ -171,7 +171,7 @@ export default function AddExpenseScreen({ onSave }: Props) {
   /** Añadir item en la revisión */
   const reviewAddItem = () => {
     const p = parseFloat(newPrice.replace(',', '.'));
-    if (!newName.trim() || isNaN(p) || p <= 0) return;
+    if (!newName.trim() || isNaN(p) || p === 0) return;
     setReviewItems(prev => [...prev, { name: newName.trim(), totalPrice: p, rid: crypto.randomUUID(), checked: true, editingName: false }]);
     setNewName(''); setNewPrice('');
   };
@@ -182,7 +182,7 @@ export default function AddExpenseScreen({ onSave }: Props) {
     const p = parseFloat(editPrice.replace(',', '.'));
     setReviewItems(prev => prev.map(i =>
       i.rid === editRid
-        ? { ...i, name: editName.trim() || i.name, totalPrice: isNaN(p) || p <= 0 ? i.totalPrice : p }
+        ? { ...i, name: editName.trim() || i.name, totalPrice: isNaN(p) ? i.totalPrice : p }
         : i
     ));
     setEditRid(null);
@@ -378,7 +378,7 @@ export default function AddExpenseScreen({ onSave }: Props) {
                               onKeyDown={e => e.key === 'Enter' && saveEdit()}
                               style={{ width: 75, padding: '5px 8px', borderRadius: 6, border: `2px solid ${BLUE}`, fontSize: 14, textAlign: 'right', outline: 'none' }} />
                           ) : (
-                            <span style={{ fontSize: 14, fontWeight: 700, color: BLUE, flexShrink: 0, minWidth: 55, textAlign: 'right' }}>
+                            <span style={{ fontSize: 14, fontWeight: 700, color: item.totalPrice < 0 ? '#dc2626' : BLUE, flexShrink: 0, minWidth: 55, textAlign: 'right' }}>
                               {item.totalPrice.toFixed(2)} €
                             </span>
                           )}
