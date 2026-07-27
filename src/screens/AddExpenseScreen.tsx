@@ -65,6 +65,7 @@ export default function AddExpenseScreen({ onSave }: Props) {
   const [description, setDescription] = useState('');
   const [category,    setCategory]    = useState<Category>('alimentacion');
   const [userId,      setUserId]      = useState(users[0]?.id ?? 'user1');
+  const [date,        setDate]        = useState(new Date().toISOString().slice(0, 10));
   const [lineItems,   setLineItems]   = useState<LineItem[]>([]);
   const [ocrError,    setOcrError]    = useState('');
   const [progress,    setProgress]    = useState(0);
@@ -131,7 +132,7 @@ export default function AddExpenseScreen({ onSave }: Props) {
     setAmountErr('');
     const expense: Expense = {
       id: crypto.randomUUID(), amount: parsed, category,
-      description: description.trim(), date: new Date().toISOString(),
+      description: description.trim(), date: new Date(date + 'T12:00:00').toISOString(),
       imageUri: imageUri ?? undefined, userId, createdAt: new Date().toISOString(),
       lineItems: lineItems.length > 0 ? lineItems : undefined,
     };
@@ -505,6 +506,14 @@ export default function AddExpenseScreen({ onSave }: Props) {
                 <span style={{ fontSize: 30, fontWeight: 800, color: BLUE }}>€</span>
               </div>
               {amountErr && <div style={{ color: '#ef4444', fontSize: 13, marginTop: 8 }}>{amountErr}</div>}
+            </div>
+
+            {/* Fecha */}
+            <div style={{ backgroundColor: '#fff', borderRadius: 16, padding: '22px', boxShadow: '0 1px 8px rgba(0,0,0,0.06)' }}>
+              <label style={{ fontSize: 12, fontWeight: 700, color: '#64748b', display: 'block', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.06em' }}>📅 Fecha de la compra</label>
+              <input type="date" value={date} onChange={e => setDate(e.target.value)}
+                style={{ width: '100%', padding: '12px 16px', borderRadius: 12, border: '2px solid #e2e8f0', fontSize: 15, outline: 'none', color: '#1e293b' }}
+                onFocus={e => (e.target.style.borderColor = BLUE)} onBlur={e => (e.target.style.borderColor = '#e2e8f0')} />
             </div>
 
             {/* Productos */}

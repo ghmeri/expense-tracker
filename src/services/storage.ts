@@ -28,6 +28,11 @@ export const deleteExpense = (id: string): void => {
   localStorage.setItem(EXPENSES_KEY, JSON.stringify(expenses));
 };
 
+export const updateExpense = (updated: Expense): void => {
+  const expenses = getExpenses().map(e => e.id === updated.id ? updated : e);
+  localStorage.setItem(EXPENSES_KEY, JSON.stringify(expenses));
+};
+
 export const getUsers = (): User[] => {
   const stored = localStorage.getItem(USERS_KEY);
   if (!stored) {
