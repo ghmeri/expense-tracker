@@ -20,12 +20,13 @@ export const analyzeReceiptImage = async (base64Image: string): Promise<OCRResul
     body: JSON.stringify({ image: base64Image }),
   });
 
-  const data = await response.json() as {
-    storeName?: string;
-    total?: number;
-    items?: LineItem[];
-    error?: string;
-  };
+  const raw = await response.text();
+  let data: { storeName?: string; total?: number; items?: LineItem[]; error?: string } = {};
+  try {
+    data = JSON.parse(raw);
+  } catch {
+    throw new Error(raw.slice(0, 200) || `Error ${response.status} al analizar el ticket`);
+  }
 
   if (!response.ok || data.error) {
     throw new Error(data.error ?? `Error ${response.status} al analizar el ticket`);
