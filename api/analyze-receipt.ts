@@ -2,7 +2,7 @@
 export const config = { runtime: 'edge' };
 
 const CORS = { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' };
-const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
+const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
 
 const PROMPT = `Analiza esta imagen de un ticket de compra y extrae los datos.
 Devuelve ÚNICAMENTE un objeto JSON válido (sin markdown, sin texto extra):
