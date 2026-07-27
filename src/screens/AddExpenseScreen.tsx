@@ -160,18 +160,18 @@ export default function AddExpenseScreen({ onSave }: Props) {
       .filter(i => i.checked)
       .map(({ name, totalPrice, quantity, unitPrice }) => ({ name, totalPrice, quantity, unitPrice }));
     setLineItems(confirmed);
-    // Siempre usar el total del ticket (ocrTotal) como importe del gasto.
-    // La suma de items es solo informativa; si falta algún descuento el total seguiría siendo correcto.
-    const positiveSum = confirmed.filter(i => i.totalPrice > 0).reduce((s, i) => s + i.totalPrice, 0);
-    const amount = ocrTotal ?? (positiveSum > 0 ? positiveSum : 0);
-    if (amount > 0) setAmount(amount.toFixed(2));
+    // Pre-rellenar total con suma de items chequeados o con el total OCR
+    const sum = confirmed.reduce((s, i) => s + i.totalPrice, 0);
+    const finalTotal = sum > 0 ? sum : (ocrTotal ?? 0);
+    if (finalTotal > 0) setAmount(finalTotal.toFixed(2));
+    else if (ocrTotal) setAmount(ocrTotal.toFixed(2));
     setStep('form');
   };
 
   /** Añadir item en la revisión */
   const reviewAddItem = () => {
     const p = parseFloat(newPrice.replace(',', '.'));
-    if (!newName.trim() || isNaN(p) || p === 0) return;
+    if (!newName.trim() || isNaN(p) || p <= 0) return;
     setReviewItems(prev => [...prev, { name: newName.trim(), totalPrice: p, rid: crypto.randomUUID(), checked: true, editingName: false }]);
     setNewName(''); setNewPrice('');
   };
@@ -182,7 +182,7 @@ export default function AddExpenseScreen({ onSave }: Props) {
     const p = parseFloat(editPrice.replace(',', '.'));
     setReviewItems(prev => prev.map(i =>
       i.rid === editRid
-        ? { ...i, name: editName.trim() || i.name, totalPrice: isNaN(p) ? i.totalPrice : p }
+        ? { ...i, name: editName.trim() || i.name, totalPrice: isNaN(p) || p <= 0 ? i.totalPrice : p }
         : i
     ));
     setEditRid(null);
@@ -378,7 +378,7 @@ export default function AddExpenseScreen({ onSave }: Props) {
                               onKeyDown={e => e.key === 'Enter' && saveEdit()}
                               style={{ width: 75, padding: '5px 8px', borderRadius: 6, border: `2px solid ${BLUE}`, fontSize: 14, textAlign: 'right', outline: 'none' }} />
                           ) : (
-                            <span style={{ fontSize: 14, fontWeight: 700, color: item.totalPrice < 0 ? '#dc2626' : BLUE, flexShrink: 0, minWidth: 55, textAlign: 'right' }}>
+                            <span style={{ fontSize: 14, fontWeight: 700, color: BLUE, flexShrink: 0, minWidth: 55, textAlign: 'right' }}>
                               {item.totalPrice.toFixed(2)} €
                             </span>
                           )}
