@@ -1,8 +1,14 @@
-// Vercel Edge Function — analiza un ticket con Google Gemini 1.5 Flash (GRATIS)
+// Vercel Edge Function — analiza un ticket con Google Gemini (con fallback entre modelos)
 export const config = { runtime: 'edge' };
 
 const CORS = { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' };
-const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
+const GEMINI_MODELS = [
+  'gemini-2.0-flash-lite',
+  'gemini-2.0-flash',
+  'gemini-1.5-flash-8b',
+  'gemini-1.5-flash',
+];
 
 const PROMPT = `Analiza esta imagen de un ticket de compra y extrae los datos.
 Devuelve ÚNICAMENTE un objeto JSON válido (sin markdown, sin texto extra):
@@ -48,23 +54,34 @@ export default async function handler(req: Request): Promise<Response> {
   const [, mimeType, base64Data] = match;
 
   try {
-    const geminiRes = await fetch(`${GEMINI_URL}?key=${apiKey}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{
-          parts: [
-            { inline_data: { mime_type: mimeType, data: base64Data } },
-            { text: PROMPT },
-          ],
-        }],
-        generationConfig: { temperature: 0, maxOutputTokens: 2000 },
-      }),
-    });
+    let geminiRes: Response | null = null;
+    let lastError = '';
+    for (const model of GEMINI_MODELS) {
+      const url = `${GEMINI_BASE}/${model}:generateContent?key=${apiKey}`;
+      geminiRes = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{
+            parts: [
+              { inline_data: { mime_type: mimeType, data: base64Data } },
+              { text: PROMPT },
+            ],
+          }],
+          generationConfig: { temperature: 0, maxOutputTokens: 2000 },
+        }),
+      });
+      if (geminiRes.ok) break;
+      lastError = await geminiRes.text();
+      // Only fall through on quota/not-found errors
+      if (geminiRes.status !== 429 && geminiRes.status !== 404) {
+        return new Response(JSON.stringify({ error: `Error Gemini ${geminiRes.status}: ${lastError}` }), { status: 500, headers: CORS });
+      }
+      geminiRes = null;
+    }
 
-    if (!geminiRes.ok) {
-      const txt = await geminiRes.text();
-      return new Response(JSON.stringify({ error: `Error Gemini ${geminiRes.status}: ${txt}` }), { status: 500, headers: CORS });
+    if (!geminiRes) {
+      return new Response(JSON.stringify({ error: `Sin cuota disponible en todos los modelos. ${lastError}` }), { status: 429, headers: CORS });
     }
 
     const data = await geminiRes.json() as {
