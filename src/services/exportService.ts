@@ -18,8 +18,8 @@ export const exportToPDF = (expenses: Expense[], users: User[]): void => {
     users.find(u => u.id === userId)?.name ?? 'Desconocido';
   const total = expenses.reduce((sum, e) => sum + e.amount, 0);
   const sorted = [...expenses].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-  const dateFrom = sorted[0]  ? new Date(sorted[0].date).toLocaleDateString('es-ES')  : '-';
-  const dateTo   = sorted.at(-1) ? new Date(sorted.at(-1)!.date).toLocaleDateString('es-ES') : '-';
+  const dateFrom = sorted[0]                    ? new Date(sorted[0].date).toLocaleDateString('es-ES')                    : '-';
+  const dateTo   = sorted[sorted.length - 1]   ? new Date(sorted[sorted.length - 1].date).toLocaleDateString('es-ES')   : '-';
 
   const doc = new jsPDF();
   const W = doc.internal.pageSize.getWidth();
