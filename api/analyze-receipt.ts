@@ -94,8 +94,12 @@ export default async function handler(req: Request): Promise<Response> {
     };
 
     const content = data.choices?.[0]?.message?.content ?? '';
-    const clean = content.replace(/```json\s*/g, '').replace(/```/g, '').trim();
-    const parsed = JSON.parse(clean);
+    // Extraer el bloque JSON aunque haya texto antes/después
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      return new Response(JSON.stringify({ error: 'El modelo no devolvió JSON válido. Inténtalo de nuevo.' }), { status: 500, headers: CORS });
+    }
+    const parsed = JSON.parse(jsonMatch[0]);
 
     return new Response(JSON.stringify(parsed), { status: 200, headers: CORS });
   } catch (err) {
