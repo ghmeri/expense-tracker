@@ -117,9 +117,9 @@ export default function HomeScreen() {
       {/* Lista */}
       <div style={{ flex: 1, overflowY: 'auto', paddingBottom: 8 }}>
         {filtered.length === 0 ? (
-          <div style={{ textAlign: 'center', marginTop: 60, color: '#bbb', fontSize: 15 }}>
+          <div style={{ textAlign: 'center', marginTop: 70, color: '#94a3b8', fontSize: 16 }}>
             {expenses.length === 0
-              ? '¡Añade tu primer gasto!'
+              ? '¡Añade tu primer gasto con el botón +!'
               : 'Sin resultados para los filtros aplicados'}
           </div>
         ) : (

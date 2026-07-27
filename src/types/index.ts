@@ -8,6 +8,13 @@ export type Category =
   | 'tecnologia'
   | 'otros';
 
+export interface LineItem {
+  name: string;
+  quantity?: number;
+  unitPrice?: number;
+  totalPrice: number;
+}
+
 export interface Expense {
   id: string;
   amount: number;
@@ -17,6 +24,7 @@ export interface Expense {
   imageUri?: string;
   userId: string;
   createdAt: string;
+  lineItems?: LineItem[];
 }
 
 export interface User {

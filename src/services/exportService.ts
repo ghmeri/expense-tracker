@@ -15,7 +15,7 @@ export const exportToPDF = (expenses: Expense[], users: User[]): void => {
   const doc = new jsPDF();
 
   doc.setFontSize(20);
-  doc.setTextColor(98, 0, 238);
+  doc.setTextColor(37, 99, 235);
   doc.text('Resumen de Gastos', 105, 20, { align: 'center' });
 
   doc.setFontSize(11);
@@ -36,14 +36,14 @@ export const exportToPDF = (expenses: Expense[], users: User[]): void => {
       `${e.amount.toFixed(2)} €`,
     ]),
     styles: { fontSize: 9 },
-    headStyles: { fillColor: [98, 0, 238] },
+    headStyles: { fillColor: [37, 99, 235] },
     columnStyles: { 4: { halign: 'right', fontStyle: 'bold' } },
   });
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const finalY = (doc as any).lastAutoTable.finalY + 10;
   doc.setFontSize(13);
-  doc.setTextColor(98, 0, 238);
+  doc.setTextColor(37, 99, 235);
   doc.text(`Total: ${total.toFixed(2)} €`, 195, finalY, { align: 'right' });
 
   doc.save(`gastos_${new Date().toISOString().slice(0, 10)}.pdf`);

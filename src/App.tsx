@@ -22,9 +22,9 @@ function AppContent() {
   return (
     <div style={{
       display: 'flex', flexDirection: 'column',
-      height: '100dvh', maxWidth: 480,
-      margin: '0 auto', backgroundColor: '#f5f5f5',
-      position: 'relative',
+      height: '100dvh', maxWidth: 960,
+      margin: '0 auto', backgroundColor: '#f0f4f8',
+      position: 'relative', boxShadow: '0 0 40px rgba(0,0,0,0.08)',
     }}>
       {/* Contenido */}
       <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
@@ -38,9 +38,9 @@ function AppContent() {
       <nav style={{
         display: 'flex',
         backgroundColor: '#fff',
-        borderTop: '1px solid #ebebeb',
+        borderTop: '1px solid #e2e8f0',
         paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-        boxShadow: '0 -2px 8px rgba(0,0,0,0.07)',
+        boxShadow: '0 -2px 12px rgba(0,0,0,0.06)',
         flexShrink: 0,
       }}>
         {TABS.map(t => (
@@ -50,28 +50,27 @@ function AppContent() {
             style={{
               flex: 1,
               display: 'flex', flexDirection: 'column', alignItems: 'center',
-              gap: 2, background: 'none', border: 'none', cursor: 'pointer',
-              padding: '10px 0 8px',
-              color: tab === t.id ? '#6200ee' : '#aaa',
+              gap: 3, background: 'none', border: 'none', cursor: 'pointer',
+              padding: '12px 0 10px',
             }}
           >
-            {/* Indicador activo */}
             {t.id === 'add' ? (
               <span style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                width: 44, height: 44, borderRadius: '50%',
-                backgroundColor: tab === t.id ? '#6200ee' : '#f0e6ff',
-                fontSize: 22, marginTop: -20,
-                boxShadow: '0 2px 8px rgba(98,0,238,0.3)',
+                width: 52, height: 52, borderRadius: '50%',
+                backgroundColor: '#2563eb',
+                fontSize: 26, marginTop: -26,
+                boxShadow: '0 4px 14px rgba(37,99,235,0.45)',
+                color: '#fff',
               }}>
-                ➕
+                ＋
               </span>
             ) : (
-              <span style={{ fontSize: 22 }}>{t.icon}</span>
+              <span style={{ fontSize: 26 }}>{t.icon}</span>
             )}
             <span style={{
-              fontSize: 10, fontWeight: tab === t.id ? 'bold' : 'normal',
-              color: tab === t.id ? '#6200ee' : '#aaa',
+              fontSize: 11, fontWeight: tab === t.id ? '700' : '400',
+              color: tab === t.id ? '#2563eb' : '#94a3b8',
             }}>
               {t.label}
             </span>

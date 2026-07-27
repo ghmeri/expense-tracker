@@ -38,26 +38,27 @@ export default function FilterBar({ filters, users, onChange }: Props) {
   return (
     <div>
       {/* Barra de búsqueda */}
-      <div style={{ display: 'flex', padding: '8px 16px', gap: 8 }}>
+      <div style={{ display: 'flex', padding: '12px 16px', gap: 10 }}>
         <input
           type="text"
           placeholder="🔍 Buscar gastos..."
           value={filters.search}
           onChange={e => onChange({ ...filters, search: e.target.value })}
           style={{
-            flex: 1, padding: '10px 12px', borderRadius: 8,
-            border: '1px solid #ddd', fontSize: 14,
+            flex: 1, padding: '12px 16px', borderRadius: 10,
+            border: '1px solid #e2e8f0', fontSize: 15,
             backgroundColor: '#fff', outline: 'none',
+            boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
           }}
         />
         <button
           onClick={() => setShowModal(true)}
           style={{
-            padding: '10px 14px', borderRadius: 8,
-            border: `1px solid ${filterActive ? '#6200ee' : '#ddd'}`,
-            backgroundColor: filterActive ? '#6200ee' : '#fff',
-            color: filterActive ? '#fff' : '#333',
-            fontWeight: 'bold', fontSize: 14,
+            padding: '12px 16px', borderRadius: 10,
+            border: `2px solid ${filterActive ? '#2563eb' : '#e2e8f0'}`,
+            backgroundColor: filterActive ? '#2563eb' : '#fff',
+            color: filterActive ? '#fff' : '#64748b',
+            fontWeight: 700, fontSize: 15,
           }}
         >
           ⚙️{filterActive ? ` (${activeFiltersCount})` : ''}
@@ -134,10 +135,11 @@ export default function FilterBar({ filters, users, onChange }: Props) {
                     key={cat.value}
                     onClick={() => onChange({ ...filters, category: cat.value })}
                     style={{
-                      padding: '6px 10px', borderRadius: 20, fontSize: 12, cursor: 'pointer',
-                      border: `1px solid ${filters.category === cat.value ? '#6200ee' : '#ddd'}`,
-                      backgroundColor: filters.category === cat.value ? '#6200ee' : '#fff',
-                      color: filters.category === cat.value ? '#fff' : '#333',
+                      padding: '7px 12px', borderRadius: 20, fontSize: 13, cursor: 'pointer',
+                      border: `2px solid ${filters.category === cat.value ? '#2563eb' : '#e2e8f0'}`,
+                      backgroundColor: filters.category === cat.value ? '#2563eb' : '#fff',
+                      color: filters.category === cat.value ? '#fff' : '#475569',
+                      fontWeight: filters.category === cat.value ? 700 : 400,
                     }}
                   >
                     {cat.label}
@@ -153,10 +155,11 @@ export default function FilterBar({ filters, users, onChange }: Props) {
                 <button
                   onClick={() => onChange({ ...filters, userId: 'todos' })}
                   style={{
-                    flex: 1, padding: 10, borderRadius: 8, cursor: 'pointer', fontSize: 13,
-                    border: `1px solid ${filters.userId === 'todos' ? '#6200ee' : '#ddd'}`,
-                    backgroundColor: filters.userId === 'todos' ? '#6200ee' : '#fff',
-                    color: filters.userId === 'todos' ? '#fff' : '#333',
+                    flex: 1, padding: 10, borderRadius: 10, cursor: 'pointer', fontSize: 14,
+                    border: `2px solid ${filters.userId === 'todos' ? '#2563eb' : '#e2e8f0'}`,
+                    backgroundColor: filters.userId === 'todos' ? '#2563eb' : '#fff',
+                    color: filters.userId === 'todos' ? '#fff' : '#475569',
+                    fontWeight: filters.userId === 'todos' ? 700 : 400,
                   }}
                 >
                   Todos
@@ -183,8 +186,8 @@ export default function FilterBar({ filters, users, onChange }: Props) {
               <button
                 onClick={resetFilters}
                 style={{
-                  flex: 1, padding: 12, borderRadius: 8, fontSize: 14, cursor: 'pointer',
-                  border: '1px solid #ddd', backgroundColor: '#fff', color: '#333',
+                  flex: 1, padding: 14, borderRadius: 10, fontSize: 14, cursor: 'pointer',
+                  border: '2px solid #e2e8f0', backgroundColor: '#fff', color: '#475569', fontWeight: 600,
                 }}
               >
                 Limpiar
@@ -192,8 +195,8 @@ export default function FilterBar({ filters, users, onChange }: Props) {
               <button
                 onClick={() => setShowModal(false)}
                 style={{
-                  flex: 2, padding: 12, borderRadius: 8, fontSize: 14, fontWeight: 'bold', cursor: 'pointer',
-                  border: 'none', backgroundColor: '#6200ee', color: '#fff',
+                  flex: 2, padding: 14, borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer',
+                  border: 'none', backgroundColor: '#2563eb', color: '#fff',
                 }}
               >
                 Aplicar filtros

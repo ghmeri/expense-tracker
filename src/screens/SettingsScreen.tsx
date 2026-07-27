@@ -59,7 +59,7 @@ export default function SettingsScreen() {
         onClick={handleSave}
         style={{
           width: '100%', marginTop: 8, padding: 16, borderRadius: 12,
-          backgroundColor: saved ? '#43a047' : '#6200ee',
+          backgroundColor: saved ? '#16a34a' : '#2563eb',
           color: '#fff', fontWeight: 'bold', fontSize: 16,
           border: 'none', cursor: 'pointer',
           transition: 'background-color 0.25s',
