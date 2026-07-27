@@ -8,7 +8,15 @@ import { analyzeReceiptImage } from '../services/ocrService';
 const BLUE = '#2563eb';
 const BLUE_LIGHT = '#eff6ff';
 
-type Step = 'capture' | 'analyzing' | 'form';
+// 4 pasos: capture → analyzing → review → form
+type Step = 'capture' | 'analyzing' | 'review' | 'form';
+type ReviewTab = 'productos' | 'ocr';
+
+interface ReviewItem extends LineItem {
+  rid: string;   // id temporal para React
+  checked: boolean;
+  editingName: boolean;
+}
 
 const CATEGORIES: { label: string; value: Category; icon: string }[] = [
   { label: 'Alimentación', value: 'alimentacion', icon: '🛒' },
@@ -65,6 +73,16 @@ export default function AddExpenseScreen({ onSave }: Props) {
   const [newName,     setNewName]     = useState('');
   const [newPrice,    setNewPrice]    = useState('');
 
+  // Estado de la pantalla de revisión
+  const [reviewItems,  setReviewItems]  = useState<ReviewItem[]>([]);
+  const [ocrRawText,   setOcrRawText]   = useState('');
+  const [reviewTab,    setReviewTab]    = useState<ReviewTab>('productos');
+  const [ocrTotal,     setOcrTotal]     = useState<number | null>(null);
+  // Edición inline en revisión
+  const [editRid,  setEditRid]  = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editPrice,setEditPrice]= useState('');
+
   const cameraRef  = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
 
@@ -74,15 +92,23 @@ export default function AddExpenseScreen({ onSave }: Props) {
     try {
       const result = await analyzeReceiptImage(imgUri);
       clearInterval(iv); setProgress(100);
-      if (result.total)     setAmount(result.total.toFixed(2));
+      setOcrRawText(result.rawText);
+      setOcrTotal(result.total);
+      // Convertir items a ReviewItems (todos chequeados por defecto)
+      setReviewItems(result.items.map(item => ({
+        ...item,
+        rid: crypto.randomUUID(),
+        checked: true,
+        editingName: false,
+      })));
       if (result.storeName) setDescription(result.storeName);
-      setLineItems(result.items);
-      setTimeout(() => setStep('form'), 500);
+      setTimeout(() => setStep('review'), 500);
     } catch (err) {
       clearInterval(iv);
       setOcrError(err instanceof Error ? err.message : 'No se pudo analizar el ticket.');
       setProgress(0);
-      setTimeout(() => setStep('form'), 600);
+      setReviewItems([]);
+      setTimeout(() => setStep('review'), 600);
     }
   }, []);
 
@@ -124,6 +150,46 @@ export default function AddExpenseScreen({ onSave }: Props) {
   const resetCapture = () => {
     setStep('capture'); setLineItems([]); setAmount('');
     setDescription(''); setImageUri(null); setOcrError('');
+    setReviewItems([]); setOcrRawText(''); setOcrTotal(null);
+    setEditRid(null);
+  };
+
+  /** Desde la revisión: confirmar productos y pasar al formulario */
+  const confirmReview = () => {
+    const confirmed = reviewItems
+      .filter(i => i.checked)
+      .map(({ name, totalPrice, quantity, unitPrice }) => ({ name, totalPrice, quantity, unitPrice }));
+    setLineItems(confirmed);
+    // Pre-rellenar total con suma de items chequeados o con el total OCR
+    const sum = confirmed.reduce((s, i) => s + i.totalPrice, 0);
+    const finalTotal = sum > 0 ? sum : (ocrTotal ?? 0);
+    if (finalTotal > 0) setAmount(finalTotal.toFixed(2));
+    else if (ocrTotal) setAmount(ocrTotal.toFixed(2));
+    setStep('form');
+  };
+
+  /** Añadir item en la revisión */
+  const reviewAddItem = () => {
+    const p = parseFloat(newPrice.replace(',', '.'));
+    if (!newName.trim() || isNaN(p) || p <= 0) return;
+    setReviewItems(prev => [...prev, { name: newName.trim(), totalPrice: p, rid: crypto.randomUUID(), checked: true, editingName: false }]);
+    setNewName(''); setNewPrice('');
+  };
+
+  /** Guardar edición inline en revisión */
+  const saveEdit = () => {
+    if (!editRid) return;
+    const p = parseFloat(editPrice.replace(',', '.'));
+    setReviewItems(prev => prev.map(i =>
+      i.rid === editRid
+        ? { ...i, name: editName.trim() || i.name, totalPrice: isNaN(p) || p <= 0 ? i.totalPrice : p }
+        : i
+    ));
+    setEditRid(null);
+  };
+
+  const startEdit = (item: ReviewItem) => {
+    setEditRid(item.rid); setEditName(item.name); setEditPrice(item.totalPrice.toFixed(2));
   };
 
   /* ─── STEP 1: Captura ─── */
@@ -162,7 +228,7 @@ export default function AddExpenseScreen({ onSave }: Props) {
           <span style={{ color: '#94a3b8', fontSize: 14 }}>o sin foto</span>
           <div style={{ flex: 1, height: 1, backgroundColor: '#e2e8f0' }} />
         </div>
-        <button onClick={() => setStep('form')} style={{ width: '100%', padding: '16px', borderRadius: 12, border: '2px solid #e2e8f0', backgroundColor: '#fff', color: '#475569', fontSize: 16, fontWeight: 600, cursor: 'pointer' }}>Introducir gasto manualmente →</button>
+        <button onClick={() => setStep('form')} style={{ width: '100%', padding: '16px', borderRadius: 12, border: '2px solid #e2e8f0', backgroundColor: '#fff', color: '#475569', fontSize: 16, fontWeight: 600, cursor: 'pointer' }}>Sin foto — Introducir gasto manualmente →</button>
       </div>
       <input ref={cameraRef}  type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={e => handleFile(e.target.files?.[0])} />
       <input ref={galleryRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={e => handleFile(e.target.files?.[0])} />
@@ -192,7 +258,218 @@ export default function AddExpenseScreen({ onSave }: Props) {
     </div>
   );
 
-  /* ─── STEP 3: Formulario ─── */
+  /* ─── STEP 3: REVISIÓN / ANÁLISIS ─── */
+  if (step === 'review') {
+    const checkedItems  = reviewItems.filter(i => i.checked);
+    const checkedTotal  = checkedItems.reduce((s, i) => s + i.totalPrice, 0);
+    const allChecked    = reviewItems.length > 0 && reviewItems.every(i => i.checked);
+
+    return (
+      <div style={{ overflowY: 'auto', height: '100%', backgroundColor: '#f0f4f8' }}>
+        <div style={{ maxWidth: 1100, margin: '0 auto', padding: '24px 24px 48px' }}>
+
+          {/* Header */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 24 }}>
+            <button onClick={resetCapture} style={{ background: 'none', border: 'none', fontSize: 24, color: '#64748b', cursor: 'pointer', padding: '4px 8px' }}>←</button>
+            <div>
+              <h2 style={{ fontSize: 24, fontWeight: 800, color: '#1e293b' }}>
+                {ocrError ? '⚠️ Error en el análisis' : reviewItems.length > 0 ? '🔬 Análisis del ticket' : '🔬 Análisis del ticket'}
+              </h2>
+              <p style={{ color: '#64748b', fontSize: 14, marginTop: 3 }}>
+                {ocrError
+                  ? 'No se pudo leer el ticket — revisa y añade productos manualmente'
+                  : `${reviewItems.length} productos detectados · Total OCR: ${ocrTotal ? ocrTotal.toFixed(2) + ' €' : 'no detectado'}`}
+              </p>
+            </div>
+          </div>
+
+          {ocrError && (
+            <div style={{ padding: '14px 18px', backgroundColor: '#fef3c7', borderRadius: 12, border: '1px solid #fcd34d', color: '#92400e', fontSize: 14, marginBottom: 20 }}>
+              ⚠️ {ocrError}
+            </div>
+          )}
+
+          {/* Layout 2 columnas */}
+          <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+
+            {/* Columna imagen */}
+            {imageUri && (
+              <div style={{ flex: '1 1 280px', minWidth: 240, position: 'sticky', top: 0 }}>
+                <div style={{ backgroundColor: '#fff', borderRadius: 16, padding: 16, boxShadow: '0 2px 12px rgba(0,0,0,0.08)' }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: '#64748b', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                    🧾 Ticket original
+                  </div>
+                  <img src={imageUri} alt="ticket" style={{ width: '100%', borderRadius: 10, display: 'block' }} />
+                  <button onClick={resetCapture} style={{ width: '100%', marginTop: 12, padding: '10px', borderRadius: 8, border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', color: '#64748b', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                    🔄 Cambiar foto
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Columna análisis */}
+            <div style={{ flex: '2 1 400px', minWidth: 320 }}>
+              <div style={{ backgroundColor: '#fff', borderRadius: 16, boxShadow: '0 2px 12px rgba(0,0,0,0.08)', overflow: 'hidden' }}>
+
+                {/* Tabs */}
+                <div style={{ display: 'flex', borderBottom: '2px solid #f1f5f9' }}>
+                  {([['productos', '📦 Productos detectados'], ['ocr', '📄 Texto OCR']] as [ReviewTab, string][]).map(([tab, label]) => (
+                    <button key={tab} onClick={() => setReviewTab(tab)} style={{
+                      flex: 1, padding: '14px 8px', border: 'none', cursor: 'pointer', fontSize: 14, fontWeight: 700,
+                      backgroundColor: 'transparent',
+                      color: reviewTab === tab ? BLUE : '#94a3b8',
+                      borderBottom: reviewTab === tab ? `3px solid ${BLUE}` : '3px solid transparent',
+                      marginBottom: -2,
+                    }}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Tab: Productos */}
+                {reviewTab === 'productos' && (
+                  <div style={{ padding: '20px' }}>
+
+                    {/* Barra de acciones */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 14, color: '#475569', fontWeight: 600 }}>
+                        <input type="checkbox" checked={allChecked}
+                          onChange={e => setReviewItems(prev => prev.map(i => ({ ...i, checked: e.target.checked })))}
+                          style={{ width: 16, height: 16, accentColor: BLUE }} />
+                        Seleccionar todos
+                      </label>
+                      <span style={{ fontSize: 13, color: '#94a3b8' }}>
+                        {checkedItems.length} / {reviewItems.length} seleccionados
+                      </span>
+                    </div>
+
+                    {/* Lista de productos */}
+                    {reviewItems.length === 0 && (
+                      <div style={{ textAlign: 'center', padding: '32px 0', color: '#94a3b8', fontSize: 15 }}>
+                        No se detectaron productos.<br />Añade uno manualmente abajo.
+                      </div>
+                    )}
+
+                    <div style={{ maxHeight: 420, overflowY: 'auto', marginBottom: 16 }}>
+                      {reviewItems.map((item) => (
+                        <div key={item.rid} style={{
+                          display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0',
+                          borderBottom: '1px solid #f1f5f9',
+                          opacity: item.checked ? 1 : 0.45,
+                        }}>
+                          {/* Checkbox */}
+                          <input type="checkbox" checked={item.checked}
+                            onChange={e => setReviewItems(prev => prev.map(i => i.rid === item.rid ? { ...i, checked: e.target.checked } : i))}
+                            style={{ width: 17, height: 17, accentColor: BLUE, flexShrink: 0 }} />
+
+                          {/* Nombre / edición */}
+                          {editRid === item.rid ? (
+                            <input value={editName} onChange={e => setEditName(e.target.value)}
+                              onKeyDown={e => e.key === 'Enter' && saveEdit()}
+                              autoFocus
+                              style={{ flex: 1, padding: '5px 8px', borderRadius: 6, border: `2px solid ${BLUE}`, fontSize: 14, outline: 'none' }} />
+                          ) : (
+                            <span style={{ flex: 1, fontSize: 14, color: '#1e293b', fontWeight: 500 }}>{item.name}</span>
+                          )}
+
+                          {/* Precio / edición */}
+                          {editRid === item.rid ? (
+                            <input type="number" value={editPrice} onChange={e => setEditPrice(e.target.value)}
+                              onKeyDown={e => e.key === 'Enter' && saveEdit()}
+                              style={{ width: 75, padding: '5px 8px', borderRadius: 6, border: `2px solid ${BLUE}`, fontSize: 14, textAlign: 'right', outline: 'none' }} />
+                          ) : (
+                            <span style={{ fontSize: 14, fontWeight: 700, color: BLUE, flexShrink: 0, minWidth: 55, textAlign: 'right' }}>
+                              {item.totalPrice.toFixed(2)} €
+                            </span>
+                          )}
+
+                          {/* Botones editar / guardar / eliminar */}
+                          {editRid === item.rid ? (
+                            <>
+                              <button onClick={saveEdit} style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: '#16a34a' }} title="Guardar">✔</button>
+                              <button onClick={() => setEditRid(null)} style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: '#94a3b8' }} title="Cancelar">✕</button>
+                            </>
+                          ) : (
+                            <>
+                              <button onClick={() => startEdit(item)} style={{ background: 'none', border: 'none', fontSize: 15, cursor: 'pointer', color: '#94a3b8' }} title="Editar">✏️</button>
+                              <button onClick={() => setReviewItems(prev => prev.filter(i => i.rid !== item.rid))} style={{ background: 'none', border: 'none', fontSize: 15, cursor: 'pointer', color: '#cbd5e1' }} title="Eliminar">🗑️</button>
+                            </>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Añadir producto manual */}
+                    <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+                      <input placeholder="Nombre del producto" value={newName} onChange={e => setNewName(e.target.value)}
+                        onKeyDown={e => e.key === 'Enter' && reviewAddItem()}
+                        style={{ flex: 1, padding: '10px 12px', borderRadius: 10, border: '1px solid #e2e8f0', fontSize: 14, outline: 'none' }} />
+                      <input type="number" placeholder="€" inputMode="decimal" value={newPrice} onChange={e => setNewPrice(e.target.value)}
+                        onKeyDown={e => e.key === 'Enter' && reviewAddItem()}
+                        style={{ width: 72, padding: '10px 8px', borderRadius: 10, border: '1px solid #e2e8f0', fontSize: 14, outline: 'none', textAlign: 'right' }} />
+                      <button onClick={reviewAddItem} style={{ padding: '10px 14px', borderRadius: 10, border: 'none', backgroundColor: BLUE, color: '#fff', fontWeight: 700, fontSize: 20, cursor: 'pointer' }}>＋</button>
+                    </div>
+
+                    {/* Resumen */}
+                    <div style={{ backgroundColor: '#f8fafc', borderRadius: 12, padding: '14px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <div style={{ fontSize: 13, color: '#64748b' }}>{checkedItems.length} productos seleccionados</div>
+                        {ocrTotal && (
+                          <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>
+                            Total OCR: {ocrTotal.toFixed(2)} € {Math.abs(checkedTotal - ocrTotal) > 0.05 ? '· ⚠️ diferencia' : '· ✅ coincide'}
+                          </div>
+                        )}
+                      </div>
+                      <div style={{ fontSize: 24, fontWeight: 800, color: BLUE }}>{checkedTotal.toFixed(2)} €</div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Tab: Texto OCR */}
+                {reviewTab === 'ocr' && (
+                  <div style={{ padding: '20px' }}>
+                    <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 12 }}>
+                      Texto extraído automáticamente por OCR. Puede contener errores.
+                    </div>
+                    {ocrRawText ? (
+                      <pre style={{
+                        backgroundColor: '#f8fafc', borderRadius: 10, padding: '14px 16px',
+                        fontSize: 12, lineHeight: 1.7, color: '#334155',
+                        overflowX: 'auto', maxHeight: 500, overflowY: 'auto',
+                        fontFamily: "'Courier New', Courier, monospace",
+                        border: '1px solid #e2e8f0',
+                        whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+                      }}>
+                        {ocrRawText}
+                      </pre>
+                    ) : (
+                      <div style={{ textAlign: 'center', color: '#94a3b8', padding: '32px 0' }}>
+                        Sin texto OCR disponible
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Botón confirmar */}
+              <button onClick={confirmReview} style={{
+                width: '100%', marginTop: 20, padding: '18px', borderRadius: 16,
+                backgroundColor: BLUE, color: '#fff', fontWeight: 800, fontSize: 17,
+                border: 'none', cursor: 'pointer',
+                boxShadow: '0 6px 20px rgba(37,99,235,0.35)',
+              }}>
+                Confirmar y continuar →
+              </button>
+            </div>
+          </div>
+        </div>
+        <input ref={cameraRef}  type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={e => handleFile(e.target.files?.[0])} />
+        <input ref={galleryRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={e => handleFile(e.target.files?.[0])} />
+      </div>
+    );
+  }
+
+  /* ─── STEP 4: Formulario ─── */
   return (
     <div style={{ overflowY: 'auto', height: '100%', backgroundColor: '#f0f4f8' }}>
       <div style={{ maxWidth: 900, margin: '0 auto', padding: '28px 28px 48px' }}>
