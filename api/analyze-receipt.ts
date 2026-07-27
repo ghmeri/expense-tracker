@@ -4,9 +4,10 @@ export const config = { runtime: 'edge' };
 const CORS = { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' };
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
 const VISION_MODELS = [
-  'meta-llama/llama-3.2-11b-vision-instruct:free',
-  'qwen/qwen-2-vl-7b-instruct:free',
   'google/gemini-2.0-flash-exp:free',
+  'qwen/qwen2.5-vl-7b-instruct:free',
+  'meta-llama/llama-3.2-90b-vision-instruct:free',
+  'qwen/qwen2.5-vl-72b-instruct:free',
 ];
 
 const PROMPT = `Analiza esta imagen de un ticket de compra y extrae los datos.
@@ -76,7 +77,8 @@ export default async function handler(req: Request): Promise<Response> {
       });
       if (res.ok) { result = res; break; }
       lastError = await res.text();
-      if (res.status !== 429 && res.status !== 503) {
+      // 404 = modelo no disponible, 429/503 = límite de cuota → intentar siguiente
+      if (res.status !== 429 && res.status !== 503 && res.status !== 404) {
         return new Response(JSON.stringify({ error: `Error OpenRouter ${res.status}: ${lastError}` }), { status: 500, headers: CORS });
       }
     }
