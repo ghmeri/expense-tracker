@@ -20,12 +20,15 @@ Devuelve ÚNICAMENTE un objeto JSON válido (sin markdown, sin texto extra):
   ]
 }
 Reglas ESTRICTAS:
-- INCLUYE únicamente productos físicos comprados con precio POSITIVO (mayor que 0).
-- EXCLUYE COMPLETAMENTE cualquier línea con importe negativo o cero (descuentos, ofertas, devoluciones).
-- EXCLUYE líneas de descuento aunque tengan precio positivo: cualquier línea cuyo nombre empiece por "Dte", "Dsc", "Desc", "Dto", "Descompte", "Descuento", "Oferta", "-50%", "%" o similar.
-- EXCLUYE SIEMPRE: la línea TOTAL, SUBTOTAL, la línea de pago (Targetes, Tarjeta, Efectiu, Efectivo, Cash), IVA, IGF, puntos de fidelidad, Targetge client, líneas de texto sin precio.
-- EXCLUYE líneas de desglose de unidades (ej: "2 unitats x 3.85", "unitat x 1.49") — son informativas del cálculo.
+- INCLUYE los productos comprados con precio POSITIVO (mayor que 0).
+- INCLUYE los descuentos y ofertas como items con totalPrice NEGATIVO (ej: -1.50). Así el usuario ve qué ha ahorrado.
+- EXCLUYE SIEMPRE: la línea TOTAL, SUBTOTAL, la línea de pago (Targetes, Tarjeta, Efectiu, Efectivo, Cash, CARVI), IVA, IGF, puntos de fidelidad, Targeta client, líneas sin precio.
+- EXCLUYE líneas de desglose de pack/unidades (ej: "2 unitats x 3.85", "unitat x 1.49") — son informativas del cálculo, el precio ya está en la línea del producto.
 - Para productos por peso (ej: "0.424kg x 5.99/kg = 2.54") usa el precio final (2.54) y el nombre de la línea anterior.
+- Para descuentos usa un nombre descriptivo (ej: "Descuento 50% President", "Dto. Bultoni") y totalPrice negativo.
+- Normaliza los nombres: primera letra mayúscula, resto minúsculas.
+- El ticket puede estar en español, catalán u otro idioma.
+- total = importe final pagado (línea TOTAL, ya con descuentos aplicados).
 - Normaliza los nombres: primera letra mayúscula, resto minúsculas.
 - El ticket puede estar en español, catalán u otro idioma.
 - total = importe final pagado (línea TOTAL, ya con descuentos aplicados).`;
@@ -101,6 +104,16 @@ export default async function handler(req: Request): Promise<Response> {
       return new Response(JSON.stringify({ error: 'El modelo no devolvió JSON válido. Inténtalo de nuevo.' }), { status: 500, headers: CORS });
     }
     const parsed = JSON.parse(jsonMatch[0]);
+
+    // Filtro servidor: eliminar solo líneas de pago, cero y duplicados de pack
+    const PAYMENT_RE = /^\s*(targetes?|tarjeta|efectiu|efectivo|cash|carvi|total|subtotal|iva|igf)/i;
+    if (Array.isArray(parsed.items)) {
+      parsed.items = parsed.items.filter((item: { name?: string; totalPrice?: number }) =>
+        typeof item.totalPrice === 'number' &&
+        item.totalPrice !== 0 &&
+        !PAYMENT_RE.test(item.name ?? '')
+      );
+    }
 
     return new Response(JSON.stringify(parsed), { status: 200, headers: CORS });
   } catch (err) {
