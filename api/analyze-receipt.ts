@@ -4,10 +4,10 @@ export const config = { runtime: 'edge' };
 const CORS = { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' };
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
 const VISION_MODELS = [
-  'google/gemini-2.0-flash-exp:free',
-  'qwen/qwen2.5-vl-7b-instruct:free',
-  'meta-llama/llama-3.2-90b-vision-instruct:free',
-  'qwen/qwen2.5-vl-72b-instruct:free',
+  'nvidia/nemotron-nano-12b-v2-vl:free',       // OCR especializado
+  'google/gemma-4-26b-a4b-it:free',            // multimodal Google
+  'google/gemma-4-31b-it:free',                // multimodal Google
+  'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free', // multimodal NVIDIA
 ];
 
 const PROMPT = `Analiza esta imagen de un ticket de compra y extrae los datos.
@@ -77,8 +77,8 @@ export default async function handler(req: Request): Promise<Response> {
       });
       if (res.ok) { result = res; break; }
       lastError = await res.text();
-      // 404 = modelo no disponible, 429/503 = límite de cuota → intentar siguiente
-      if (res.status !== 429 && res.status !== 503 && res.status !== 404) {
+      // 400/404 = modelo no disponible, 429/503 = límite de cuota → intentar siguiente
+      if (res.status !== 429 && res.status !== 503 && res.status !== 404 && res.status !== 400) {
         return new Response(JSON.stringify({ error: `Error OpenRouter ${res.status}: ${lastError}` }), { status: 500, headers: CORS });
       }
     }
