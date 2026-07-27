@@ -108,7 +108,7 @@ export default function AddExpenseScreen({ onSave }: Props) {
       setOcrError(err instanceof Error ? err.message : 'No se pudo analizar el ticket.');
       setProgress(0);
       setReviewItems([]);
-      setTimeout(() => setStep('review'), 600);
+      setTimeout(() => setStep('review'), 400);
     }
   }, []);
 
