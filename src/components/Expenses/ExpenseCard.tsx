@@ -148,14 +148,6 @@ export default function ExpenseCard({ expense, userName, userColor, onDelete }: 
                 🗑️
               </button>
             </div>
-                  🧾
-                </button>
-              )}
-              <button onClick={confirmDelete} title="Eliminar"
-                style={{ background: 'none', border: 'none', fontSize: 18, padding: '2px 4px', cursor: 'pointer', borderRadius: 6, color: '#94a3b8' }}>
-                🗑️
-              </button>
-            </div>
           </div>
         </div>
 
