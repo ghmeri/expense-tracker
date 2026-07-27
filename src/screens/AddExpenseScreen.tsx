@@ -160,11 +160,11 @@ export default function AddExpenseScreen({ onSave }: Props) {
       .filter(i => i.checked)
       .map(({ name, totalPrice, quantity, unitPrice }) => ({ name, totalPrice, quantity, unitPrice }));
     setLineItems(confirmed);
-    // Pre-rellenar total con suma de items chequeados o con el total OCR
-    const sum = confirmed.reduce((s, i) => s + i.totalPrice, 0);
-    const finalTotal = sum > 0 ? sum : (ocrTotal ?? 0);
-    if (finalTotal > 0) setAmount(finalTotal.toFixed(2));
-    else if (ocrTotal) setAmount(ocrTotal.toFixed(2));
+    // Siempre usar el total del ticket (ocrTotal) como importe del gasto.
+    // La suma de items es solo informativa; si falta algún descuento el total seguiría siendo correcto.
+    const positiveSum = confirmed.filter(i => i.totalPrice > 0).reduce((s, i) => s + i.totalPrice, 0);
+    const amount = ocrTotal ?? (positiveSum > 0 ? positiveSum : 0);
+    if (amount > 0) setAmount(amount.toFixed(2));
     setStep('form');
   };
 
