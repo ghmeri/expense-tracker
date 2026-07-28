@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../store';
 import { loadData } from '../store/expenseSlice';
+import { COLORS, FONT_HEAD, shadow, border } from '../theme';
 
 type Section = 'tickets' | 'add' | 'summary' | 'menu' | 'recipes' | 'settings';
 
@@ -28,13 +29,13 @@ export default function HomeScreen({ onNavigate }: Props) {
     .reduce((sum, e) => sum + e.amount, 0);
 
   return (
-    <div style={{ overflowY: 'auto', height: '100%', backgroundColor: '#f0f4f8' }}>
-      <div style={{ backgroundColor: '#6200ee', padding: '28px 24px 40px' }}>
-        <div style={{ color: 'rgba(255,255,255,0.8)', fontSize: 13 }}>Este mes has gastado</div>
-        <div style={{ color: '#fff', fontSize: 38, fontWeight: 800, lineHeight: 1.1 }}>
+    <div style={{ overflowY: 'auto', height: '100%', backgroundColor: COLORS.bg }}>
+      <div style={{ backgroundColor: COLORS.ink, padding: '28px 24px 40px' }}>
+        <div style={{ color: 'rgba(255,211,92,0.7)', fontSize: 13, fontWeight: 600 }}>Este mes has gastado</div>
+        <div style={{ color: COLORS.yellow, fontFamily: FONT_HEAD, fontSize: 38, fontWeight: 700, lineHeight: 1.1 }}>
           {thisMonthTotal.toFixed(2)} €
         </div>
-        <div style={{ color: 'rgba(255,255,255,0.65)', fontSize: 13, marginTop: 4 }}>
+        <div style={{ color: 'rgba(251,239,221,0.7)', fontSize: 13, marginTop: 4 }}>
           {expenses.length} {expenses.length === 1 ? 'gasto' : 'gastos'} en total
         </div>
       </div>
@@ -46,14 +47,14 @@ export default function HomeScreen({ onNavigate }: Props) {
             onClick={() => onNavigate(s.id)}
             style={{
               width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 14,
-              backgroundColor: '#fff', borderRadius: 16, padding: '16px 18px', marginBottom: 12,
-              border: 'none', boxShadow: '0 1px 8px rgba(0,0,0,0.06)', cursor: 'pointer',
+              backgroundColor: COLORS.card, border: border(), borderRadius: 14,
+              padding: '15px 17px', marginBottom: 12, boxShadow: shadow(), cursor: 'pointer',
             }}
           >
-            <span style={{ fontSize: 28, flexShrink: 0 }}>{s.icon}</span>
+            <span style={{ fontSize: 26, flexShrink: 0 }}>{s.icon}</span>
             <div>
-              <div style={{ fontSize: 15, fontWeight: 700, color: '#1e293b' }}>{s.title}</div>
-              <div style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>{s.desc}</div>
+              <div style={{ fontFamily: FONT_HEAD, fontSize: 14.5, fontWeight: 700, color: COLORS.ink }}>{s.title}</div>
+              <div style={{ fontSize: 12.5, color: COLORS.muted, marginTop: 2 }}>{s.desc}</div>
             </div>
           </button>
         ))}

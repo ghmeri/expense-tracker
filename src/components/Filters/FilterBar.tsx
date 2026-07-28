@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { FilterState, Category, User } from '../../types';
+import { COLORS, FONT_HEAD, border, shadow } from '../../theme';
 
 interface Props {
   filters: FilterState;
@@ -45,20 +46,19 @@ export default function FilterBar({ filters, users, onChange }: Props) {
           value={filters.search}
           onChange={e => onChange({ ...filters, search: e.target.value })}
           style={{
-            flex: 1, padding: '12px 16px', borderRadius: 10,
-            border: '1px solid #e2e8f0', fontSize: 15,
-            backgroundColor: '#fff', outline: 'none',
-            boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+            flex: 1, padding: '11px 15px', borderRadius: 10,
+            border: border(2), fontSize: 15,
+            backgroundColor: COLORS.card, outline: 'none',
           }}
         />
         <button
           onClick={() => setShowModal(true)}
           style={{
-            padding: '12px 16px', borderRadius: 10,
-            border: `2px solid ${filterActive ? '#2563eb' : '#e2e8f0'}`,
-            backgroundColor: filterActive ? '#2563eb' : '#fff',
-            color: filterActive ? '#fff' : '#64748b',
-            fontWeight: 700, fontSize: 15,
+            padding: '10px 15px', borderRadius: 10,
+            border: border(2),
+            backgroundColor: filterActive ? COLORS.ink : COLORS.card,
+            color: filterActive ? COLORS.yellow : COLORS.muted,
+            fontFamily: FONT_HEAD, fontWeight: 700, fontSize: 14,
           }}
         >
           ⚙️{filterActive ? ` (${activeFiltersCount})` : ''}
@@ -70,22 +70,23 @@ export default function FilterBar({ filters, users, onChange }: Props) {
         <div
           style={{
             position: 'fixed', inset: 0, zIndex: 100,
-            backgroundColor: 'rgba(0,0,0,0.5)',
+            backgroundColor: 'rgba(38,32,26,0.55)',
             display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
           }}
           onClick={e => { if (e.target === e.currentTarget) setShowModal(false); }}
         >
           <div style={{
-            backgroundColor: '#fff', borderRadius: '16px 16px 0 0',
+            backgroundColor: COLORS.bg, borderRadius: '16px 16px 0 0',
+            border: border(2.5), borderBottom: 'none',
             padding: '20px 20px 32px',
             width: '100%', maxWidth: 480, maxHeight: '80vh', overflowY: 'auto',
           }}>
             {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-              <div style={{ fontSize: 16, fontWeight: 'bold', color: '#333' }}>Filtros avanzados</div>
+              <div style={{ fontFamily: FONT_HEAD, fontSize: 16, fontWeight: 700, color: COLORS.ink }}>Filtros avanzados</div>
               <button
                 onClick={() => setShowModal(false)}
-                style={{ background: 'none', border: 'none', fontSize: 22, color: '#666', cursor: 'pointer' }}
+                style={{ background: 'none', border: 'none', fontSize: 22, color: COLORS.muted, cursor: 'pointer' }}
               >
                 ✕
               </button>
@@ -93,10 +94,10 @@ export default function FilterBar({ filters, users, onChange }: Props) {
 
             {/* Fechas */}
             <div style={{ marginBottom: 20 }}>
-              <div style={{ fontSize: 13, fontWeight: 'bold', color: '#666', marginBottom: 8 }}>📅 Rango de fechas</div>
+              <div style={{ fontFamily: FONT_HEAD, fontSize: 12, fontWeight: 700, color: COLORS.muted, marginBottom: 8 }}>📅 Rango de fechas</div>
               <div style={{ display: 'flex', gap: 8 }}>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 11, color: '#999', marginBottom: 4 }}>Desde</div>
+                  <div style={{ fontSize: 11, color: COLORS.mutedLighter, marginBottom: 4 }}>Desde</div>
                   <input
                     type="date"
                     value={filters.dateFrom ? filters.dateFrom.slice(0, 10) : ''}
@@ -105,12 +106,12 @@ export default function FilterBar({ filters, users, onChange }: Props) {
                     }
                     style={{
                       width: '100%', padding: '8px 10px', borderRadius: 8,
-                      border: '1px solid #ddd', fontSize: 13, outline: 'none',
+                      border: border(1.5), fontSize: 13, outline: 'none', backgroundColor: COLORS.card,
                     }}
                   />
                 </div>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 11, color: '#999', marginBottom: 4 }}>Hasta</div>
+                  <div style={{ fontSize: 11, color: COLORS.mutedLighter, marginBottom: 4 }}>Hasta</div>
                   <input
                     type="date"
                     value={filters.dateTo ? filters.dateTo.slice(0, 10) : ''}
@@ -119,7 +120,7 @@ export default function FilterBar({ filters, users, onChange }: Props) {
                     }
                     style={{
                       width: '100%', padding: '8px 10px', borderRadius: 8,
-                      border: '1px solid #ddd', fontSize: 13, outline: 'none',
+                      border: border(1.5), fontSize: 13, outline: 'none', backgroundColor: COLORS.card,
                     }}
                   />
                 </div>
@@ -128,18 +129,18 @@ export default function FilterBar({ filters, users, onChange }: Props) {
 
             {/* Categorías */}
             <div style={{ marginBottom: 20 }}>
-              <div style={{ fontSize: 13, fontWeight: 'bold', color: '#666', marginBottom: 8 }}>📂 Categoría</div>
+              <div style={{ fontFamily: FONT_HEAD, fontSize: 12, fontWeight: 700, color: COLORS.muted, marginBottom: 8 }}>📂 Categoría</div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                 {CATEGORIES.map(cat => (
                   <button
                     key={cat.value}
                     onClick={() => onChange({ ...filters, category: cat.value })}
                     style={{
-                      padding: '7px 12px', borderRadius: 20, fontSize: 13, cursor: 'pointer',
-                      border: `2px solid ${filters.category === cat.value ? '#2563eb' : '#e2e8f0'}`,
-                      backgroundColor: filters.category === cat.value ? '#2563eb' : '#fff',
-                      color: filters.category === cat.value ? '#fff' : '#475569',
-                      fontWeight: filters.category === cat.value ? 700 : 400,
+                      padding: '7px 12px', borderRadius: 20, fontSize: 12.5, cursor: 'pointer',
+                      border: border(2),
+                      backgroundColor: filters.category === cat.value ? COLORS.ink : COLORS.card,
+                      color: filters.category === cat.value ? COLORS.yellow : COLORS.ink,
+                      fontWeight: filters.category === cat.value ? 700 : 500,
                     }}
                   >
                     {cat.label}
@@ -150,16 +151,16 @@ export default function FilterBar({ filters, users, onChange }: Props) {
 
             {/* Persona */}
             <div style={{ marginBottom: 24 }}>
-              <div style={{ fontSize: 13, fontWeight: 'bold', color: '#666', marginBottom: 8 }}>👤 Persona</div>
-              <div style={{ display: 'flex', gap: 8 }}>
+              <div style={{ fontFamily: FONT_HEAD, fontSize: 12, fontWeight: 700, color: COLORS.muted, marginBottom: 8 }}>👤 Persona</div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 <button
                   onClick={() => onChange({ ...filters, userId: 'todos' })}
                   style={{
-                    flex: 1, padding: 10, borderRadius: 10, cursor: 'pointer', fontSize: 14,
-                    border: `2px solid ${filters.userId === 'todos' ? '#2563eb' : '#e2e8f0'}`,
-                    backgroundColor: filters.userId === 'todos' ? '#2563eb' : '#fff',
-                    color: filters.userId === 'todos' ? '#fff' : '#475569',
-                    fontWeight: filters.userId === 'todos' ? 700 : 400,
+                    flex: 1, padding: 10, borderRadius: 10, cursor: 'pointer', fontSize: 13.5,
+                    border: border(2),
+                    backgroundColor: filters.userId === 'todos' ? COLORS.ink : COLORS.card,
+                    color: filters.userId === 'todos' ? COLORS.yellow : COLORS.ink,
+                    fontWeight: filters.userId === 'todos' ? 700 : 500,
                   }}
                 >
                   Todos
@@ -169,10 +170,11 @@ export default function FilterBar({ filters, users, onChange }: Props) {
                     key={user.id}
                     onClick={() => onChange({ ...filters, userId: user.id })}
                     style={{
-                      flex: 1, padding: 10, borderRadius: 8, cursor: 'pointer', fontSize: 13,
-                      border: `1px solid ${filters.userId === user.id ? user.color : '#ddd'}`,
-                      backgroundColor: filters.userId === user.id ? user.color : '#fff',
-                      color: filters.userId === user.id ? '#fff' : '#333',
+                      flex: 1, padding: 10, borderRadius: 10, cursor: 'pointer', fontSize: 13,
+                      border: border(2),
+                      backgroundColor: filters.userId === user.id ? user.color : COLORS.card,
+                      color: filters.userId === user.id ? '#fff' : COLORS.ink,
+                      fontWeight: 600,
                     }}
                   >
                     {user.name}
@@ -187,7 +189,7 @@ export default function FilterBar({ filters, users, onChange }: Props) {
                 onClick={resetFilters}
                 style={{
                   flex: 1, padding: 14, borderRadius: 10, fontSize: 14, cursor: 'pointer',
-                  border: '2px solid #e2e8f0', backgroundColor: '#fff', color: '#475569', fontWeight: 600,
+                  border: border(2), backgroundColor: COLORS.card, color: COLORS.ink, fontWeight: 600,
                 }}
               >
                 Limpiar
@@ -196,7 +198,7 @@ export default function FilterBar({ filters, users, onChange }: Props) {
                 onClick={() => setShowModal(false)}
                 style={{
                   flex: 2, padding: 14, borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer',
-                  border: 'none', backgroundColor: '#2563eb', color: '#fff',
+                  border: border(2.5), backgroundColor: COLORS.ink, color: COLORS.yellow, boxShadow: shadow(3),
                 }}
               >
                 Aplicar filtros

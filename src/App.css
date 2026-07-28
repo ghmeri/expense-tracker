@@ -52,8 +52,8 @@ html, body, #root {
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: #f0f4f8;
+  font-family: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: #FBEFDD;
   overscroll-behavior: none;
   font-size: 16px;
 }
@@ -66,8 +66,23 @@ input, textarea, select, button {
 button { cursor: pointer; }
 
 ::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-thumb { background: #c5d0de; border-radius: 3px; }
+::-webkit-scrollbar-thumb { background: #C9B98F; border-radius: 3px; }
 ::-webkit-scrollbar-track { background: transparent; }
+
+/* ── Vista mensual del menú ── */
+.month-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 5px;
+}
+.month-grid .dow {
+  text-align: center;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  opacity: 0.55;
+  padding-bottom: 4px;
+}
 
 /* ── Animaciones OCR ── */
 @keyframes scanLine {

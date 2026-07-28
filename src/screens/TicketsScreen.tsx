@@ -6,6 +6,7 @@ import ExpenseCard from '../components/Expenses/ExpenseCard';
 import FilterBar from '../components/Filters/FilterBar';
 import { FilterState } from '../types';
 import { exportToPDF, exportToCSV } from '../services/exportService';
+import { COLORS, FONT_HEAD, border, shadow } from '../theme';
 
 const initialFilters: FilterState = {
   search: '',
@@ -43,17 +44,17 @@ export default function TicketsScreen() {
   const total = filtered.reduce((sum, e) => sum + e.amount, 0);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      {/* Cabecera morada */}
-      <div style={{ backgroundColor: '#6200ee', padding: '20px 20px 16px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', backgroundColor: COLORS.bg }}>
+      {/* Cabecera */}
+      <div style={{ backgroundColor: COLORS.ink, padding: '20px 20px 16px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div>
-            <div style={{ color: 'rgba(255,255,255,0.8)', fontSize: 13 }}>Total gastado</div>
-            <div style={{ color: '#fff', fontSize: 34, fontWeight: 'bold', lineHeight: 1.1 }}>
+            <div style={{ color: 'rgba(251,239,221,0.7)', fontSize: 13 }}>Total gastado</div>
+            <div style={{ color: COLORS.yellow, fontFamily: FONT_HEAD, fontSize: 32, fontWeight: 700, lineHeight: 1.1 }}>
               {total.toFixed(2)} €
             </div>
             {filtered.length !== expenses.length && (
-              <div style={{ color: 'rgba(255,255,255,0.65)', fontSize: 12, marginTop: 4 }}>
+              <div style={{ color: 'rgba(251,239,221,0.6)', fontSize: 12, marginTop: 4 }}>
                 {filtered.length} de {expenses.length} gastos
               </div>
             )}
@@ -64,9 +65,9 @@ export default function TicketsScreen() {
             <button
               onClick={() => setShowExport(!showExport)}
               style={{
-                backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 8,
-                padding: '10px 14px', border: '1px solid rgba(255,255,255,0.4)',
-                color: '#fff', fontWeight: 'bold', fontSize: 13, cursor: 'pointer',
+                backgroundColor: COLORS.yellow, borderRadius: 8,
+                padding: '9px 13px', border: `2px solid ${COLORS.ink}`,
+                color: COLORS.ink, fontFamily: FONT_HEAD, fontWeight: 700, fontSize: 12.5, cursor: 'pointer',
               }}
             >
               📤 Exportar
@@ -74,22 +75,21 @@ export default function TicketsScreen() {
 
             {showExport && (
               <>
-                {/* Overlay para cerrar */}
                 <div
                   style={{ position: 'fixed', inset: 0, zIndex: 9 }}
                   onClick={() => setShowExport(false)}
                 />
                 <div style={{
                   position: 'absolute', right: 0, top: '110%', zIndex: 10,
-                  backgroundColor: '#fff', borderRadius: 10,
-                  boxShadow: '0 4px 16px rgba(0,0,0,0.18)', overflow: 'hidden', minWidth: 170,
+                  backgroundColor: COLORS.card, borderRadius: 10, border: border(),
+                  boxShadow: shadow(3), overflow: 'hidden', minWidth: 170,
                 }}>
                   <button
                     onClick={() => { setShowExport(false); exportToPDF(filtered, users); }}
                     style={{
                       display: 'block', width: '100%', padding: '13px 16px',
                       background: 'none', border: 'none', textAlign: 'left',
-                      cursor: 'pointer', fontSize: 13, borderBottom: '1px solid #f0f0f0',
+                      cursor: 'pointer', fontSize: 13, borderBottom: `1.5px solid ${COLORS.dashed}`,
                     }}
                   >
                     📄 Exportar PDF
@@ -117,7 +117,7 @@ export default function TicketsScreen() {
       {/* Lista */}
       <div style={{ flex: 1, overflowY: 'auto', paddingBottom: 8 }}>
         {filtered.length === 0 ? (
-          <div style={{ textAlign: 'center', marginTop: 70, color: '#94a3b8', fontSize: 16 }}>
+          <div style={{ textAlign: 'center', marginTop: 70, color: COLORS.mutedLighter, fontSize: 15 }}>
             {expenses.length === 0
               ? '¡Añade tu primer gasto con el botón +!'
               : 'Sin resultados para los filtros aplicados'}

@@ -9,6 +9,7 @@ import SummaryScreen from './screens/SummaryScreen';
 import MenuScreen from './screens/MenuScreen';
 import RecipesScreen from './screens/RecipesScreen';
 import SettingsScreen from './screens/SettingsScreen';
+import { COLORS, FONT_HEAD, shadow } from './theme';
 import './App.css';
 
 type Tab = 'home' | 'tickets' | 'add' | 'summary' | 'menu' | 'recipes' | 'settings';
@@ -30,8 +31,8 @@ function AppContent() {
     <div className="app-shell" style={{
       display: 'flex', flexDirection: 'column',
       height: '100%',
-      margin: '0 auto', backgroundColor: '#f0f4f8',
-      position: 'relative', boxShadow: '0 0 40px rgba(0,0,0,0.08)',
+      margin: '0 auto', backgroundColor: COLORS.bg,
+      position: 'relative', boxShadow: '0 0 40px rgba(38,32,26,0.18)',
     }}>
       {/* Contenido */}
       <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
@@ -49,10 +50,9 @@ function AppContent() {
       {/* Barra de navegación inferior */}
       <nav style={{
         display: 'flex',
-        backgroundColor: '#fff',
-        borderTop: '1px solid #e2e8f0',
+        backgroundColor: COLORS.card,
+        borderTop: `2.5px solid ${COLORS.ink}`,
         paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-        boxShadow: '0 -2px 12px rgba(0,0,0,0.06)',
         flexShrink: 0,
       }}>
         {TABS.map(t => (
@@ -70,19 +70,21 @@ function AppContent() {
               <span style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 width: 52, height: 52, borderRadius: '50%',
-                backgroundColor: '#2563eb',
+                backgroundColor: COLORS.ink,
                 fontSize: 26, marginTop: -26,
-                boxShadow: '0 4px 14px rgba(37,99,235,0.45)',
-                color: '#fff',
+                border: `2.5px solid ${COLORS.ink}`,
+                boxShadow: shadow(3),
+                color: COLORS.yellow,
               }}>
                 ＋
               </span>
             ) : (
-              <span style={{ fontSize: 26 }}>{t.icon}</span>
+              <span style={{ fontSize: 24 }}>{t.icon}</span>
             )}
             <span style={{
-              fontSize: 11, fontWeight: tab === t.id ? '700' : '400',
-              color: tab === t.id ? '#2563eb' : '#94a3b8',
+              fontFamily: FONT_HEAD,
+              fontSize: 10.5, fontWeight: 700,
+              color: tab === t.id ? COLORS.ink : COLORS.mutedLighter,
             }}>
               {t.label}
             </span>

@@ -1,49 +1,52 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../store';
 import {
   fetchWeekMenu, saveMealSlotRows, fetchRecentPurchases, removeRecentPurchase,
   fetchCustomIdeas, pushCustomIdea, removeCustomIdea, setCurrentWeekStart,
 } from '../store/menuSlice';
-import { DietTag, MealSlot, MenuRow, RowType, WeekDay } from '../types';
+import { DietTag, MealSlot, MenuRow, RowType, WeekDay, WeeklyMenu } from '../types';
 import { HOUSEHOLD_CODE } from '../services/household';
-import { registerHousehold } from '../services/sharedService';
-import { WEEK_DAYS, addWeeksISO, formatWeekRange, getMondayISO, getDayDateLabel, isToday } from '../utils/date';
+import { registerHousehold, getWeekMenu } from '../services/sharedService';
+import {
+  WEEK_DAYS, addWeeksISO, formatWeekRange, getMondayISO, getDayDateLabel, isToday,
+  getMonthLabel, addMonths, getMonthGrid, MonthDayCell, getTodayISO,
+} from '../utils/date';
 import { MEAL_IDEAS } from '../data/mealIdeas';
+import { COLORS, FONT_HEAD, shadow, border } from '../theme';
 
-const BLUE = '#2563eb';
 const SAVE_DELAY = 500;
 
-// Colores: comida compartida = azul, Maria F = verde, Maria N = rojo
-const COMPARTIDO = { bg: '#eff6ff', border: '#bfdbfe', text: '#1d4ed8' };
-const MARIA_F = { bg: '#f0fdf4', border: '#bbf7d0', text: '#15803d' };
-const MARIA_N = { bg: '#fef2f2', border: '#fecaca', text: '#b91c1c' };
+// Maria F = naranja, Maria N = verde azulado (misma paleta que comida/cena)
+const MARIA_F = { text: COLORS.orangeText, dot: COLORS.orange };
+const MARIA_N = { text: COLORS.tealText, dot: COLORS.teal };
 
-const SLOTS: { id: MealSlot; label: string; icon: string; solid: string; bg: string }[] = [
-  { id: 'comida', label: 'Comida', icon: '🍲', solid: '#f59e0b', bg: '#fffbeb' },
-  { id: 'cena', label: 'Cena', icon: '🌙', solid: '#6366f1', bg: '#f5f3ff' },
+const SLOTS: { id: MealSlot; label: string; icon: string; accent: string; dot: string }[] = [
+  { id: 'comida', label: 'Comida', icon: '🍲', accent: COLORS.orangeText, dot: COLORS.orange },
+  { id: 'cena', label: 'Cena', icon: '🌙', accent: COLORS.tealText, dot: COLORS.teal },
 ];
 
-const cardStyle: React.CSSProperties = {
-  backgroundColor: '#fff', borderRadius: 16, boxShadow: '0 1px 8px rgba(0,0,0,0.06)', marginBottom: 16, overflow: 'hidden',
+const panelStyle: React.CSSProperties = {
+  backgroundColor: COLORS.card, border: border(), borderRadius: 14,
+  boxShadow: shadow(), marginBottom: 16, overflow: 'hidden',
 };
 
 /** Panel lateral colapsable */
 function Panel({ title, children, defaultOpen = true }: { title: string; children: React.ReactNode; defaultOpen?: boolean }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <div style={cardStyle}>
+    <div style={panelStyle}>
       <button
         onClick={() => setOpen(o => !o)}
         style={{
           width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '14px 18px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left',
+          padding: '14px 16px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left',
         }}
       >
-        <span style={{ fontSize: 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>{title}</span>
-        <span style={{ fontSize: 12, color: '#94a3b8', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>▾</span>
+        <span style={{ fontFamily: FONT_HEAD, fontSize: 13, fontWeight: 700, color: COLORS.ink }}>{title}</span>
+        <span style={{ fontSize: 12, color: COLORS.muted, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>▾</span>
       </button>
-      {open && <div style={{ padding: '0 18px 18px' }}>{children}</div>}
+      {open && <div style={{ padding: '0 16px 16px' }}>{children}</div>}
     </div>
   );
 }
@@ -85,6 +88,7 @@ function AutoTextarea(props: {
       style={{
         width: '100%', border: 'none', outline: 'none', resize: 'none', overflow: 'hidden',
         whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'inherit', lineHeight: 1.35,
+        background: 'transparent',
         ...props.style,
       }}
     />
@@ -101,18 +105,30 @@ interface SelectedCell { day: WeekDay; slot: MealSlot; rowId: string; field: Fie
 
 const fieldKey = (day: WeekDay, slot: MealSlot, rowId: string, field: Field) => `${day}|${slot}|${rowId}|${field}`;
 
+/** Primer plato de la fila, para la vista de mes (una línea de resumen). */
+const miniDish = (rows: MenuRow[] | undefined): string => {
+  const row = rows?.[0];
+  if (!row) return '';
+  if (row.type === 'compartido') return row.shared;
+  return row.personF || row.personN;
+};
+
+type View = 'week' | 'month';
+
 export default function MenuScreen() {
   const dispatch = useDispatch<AppDispatch>();
   const { currentWeekStart, weekMenu, recentPurchases, customIdeas, loading } =
     useSelector((state: RootState) => state.menu);
 
+  const [view, setView] = useState<View>('week');
+  const [monthDate, setMonthDate] = useState(new Date());
+  const [monthMenus, setMonthMenus] = useState<Record<string, WeeklyMenu>>({});
+
   const [dietFilter, setDietFilter] = useState<DietTag | null>(null);
   const [selectedCell, setSelectedCell] = useState<SelectedCell | null>(null);
 
   // Buffer local de edición: evita que las respuestas del servidor (que
-  // llegan con retraso) pisen lo que estás escribiendo ahora mismo — antes,
-  // al escribir rápido, cada tecla disparaba un guardado y una respuesta
-  // desactualizada podía "comerse" letras o dejar el texto revuelto.
+  // llegan con retraso) pisen lo que estás escribiendo ahora mismo.
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
@@ -126,15 +142,38 @@ export default function MenuScreen() {
     dispatch(fetchCustomIdeas());
   }, [currentWeekStart]);
 
+  const monthGrid = useMemo(() => getMonthGrid(monthDate), [monthDate]);
+
+  useEffect(() => {
+    if (view !== 'month') return;
+    const weekStarts = Array.from(new Set(monthGrid.map(c => c.weekStart)));
+    const missing = weekStarts.filter(ws => !(ws in monthMenus));
+    if (missing.length === 0) return;
+    let cancelled = false;
+    Promise.all(missing.map(ws => getWeekMenu(HOUSEHOLD_CODE, ws).then(doc => [ws, doc.menu] as const)))
+      .then(pairs => {
+        if (cancelled) return;
+        setMonthMenus(prev => {
+          const next = { ...prev };
+          for (const [ws, menu] of pairs) next[ws] = menu;
+          return next;
+        });
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [view, monthGrid, monthMenus]);
+
   // Blindaje: si el documento guardado viene de una versión anterior del
   // esquema del menú (no era un array de filas), lo ignoramos en vez de
   // romper el render — al primer cambio se sobrescribe con el formato actual.
-  const getRows = (day: WeekDay, slot: MealSlot): MenuRow[] => {
-    const raw = weekMenu[day]?.[slot];
+  const rowsFrom = (menu: WeeklyMenu, day: WeekDay, slot: MealSlot): MenuRow[] => {
+    const raw = menu[day]?.[slot];
     if (!Array.isArray(raw)) return [];
     return raw.filter((r): r is MenuRow =>
       !!r && typeof r === 'object' && (r.type === 'compartido' || r.type === 'separado'));
   };
+
+  const getRows = (day: WeekDay, slot: MealSlot): MenuRow[] => rowsFrom(weekMenu, day, slot);
 
   const saveRows = (day: WeekDay, slot: MealSlot, rows: MenuRow[]) => {
     dispatch(saveMealSlotRows({ weekStart: currentWeekStart, day, slot, rows }));
@@ -161,7 +200,7 @@ export default function MenuScreen() {
   /** Al salir del campo: guarda ya (sin esperar la pausa) y, si hay texto, lo añade a "vuestras recetas". */
   const commitField = (day: WeekDay, slot: MealSlot, rowId: string, field: Field) => {
     const key = fieldKey(day, slot, rowId, field);
-    if (!(key in drafts)) return; // no había cambios pendientes
+    if (!(key in drafts)) return;
     const value = drafts[key];
     clearTimeout(timers.current[key]);
 
@@ -202,6 +241,11 @@ export default function MenuScreen() {
     setFieldNow(selectedCell.day, selectedCell.slot, selectedCell.rowId, selectedCell.field, name);
   };
 
+  const goToDay = (cell: MonthDayCell) => {
+    dispatch(setCurrentWeekStart(cell.weekStart));
+    setView('week');
+  };
+
   const filteredIdeas = dietFilter ? MEAL_IDEAS.filter(i => i.dietTag === dietFilter) : MEAL_IDEAS;
 
   const isFieldSelected = (day: WeekDay, slot: MealSlot, rowId: string, field: Field) =>
@@ -212,15 +256,42 @@ export default function MenuScreen() {
     onDragStart: (e: React.DragEvent) => e.dataTransfer.setData('text/plain', name),
   });
 
-  return (
-    <div style={{ overflowY: 'auto', height: '100%', padding: '20px 20px 40px', backgroundColor: '#f0f4f8' }}>
-      <div className="menu-layout">
+  const arrowBtn: React.CSSProperties = {
+    width: 34, height: 34, borderRadius: 9, border: border(2.5), backgroundColor: COLORS.card,
+    fontFamily: FONT_HEAD, fontWeight: 700, fontSize: 16, cursor: 'pointer', flexShrink: 0,
+  };
 
-        {/* Barra lateral: compras recientes + ideas (colapsables) */}
+  const dowLabels = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
+
+  return (
+    <div style={{ overflowY: 'auto', height: '100%', padding: '20px 20px 40px', backgroundColor: COLORS.bg }}>
+
+      {/* Toggle Semana / Mes */}
+      <div style={{
+        display: 'inline-flex', gap: 6, backgroundColor: COLORS.card, border: border(2.5),
+        borderRadius: 12, padding: 4, boxShadow: shadow(3), marginBottom: 18,
+      }}>
+        {(['week', 'month'] as const).map(v => (
+          <button
+            key={v}
+            onClick={() => setView(v)}
+            style={{
+              border: 'none', borderRadius: 9, padding: '7px 16px', cursor: 'pointer',
+              fontFamily: FONT_HEAD, fontWeight: 700, fontSize: 12.5,
+              backgroundColor: view === v ? COLORS.ink : 'transparent',
+              color: view === v ? COLORS.yellow : COLORS.muted,
+            }}
+          >
+            {v === 'week' ? 'Semana' : 'Mes'}
+          </button>
+        ))}
+      </div>
+
+      <div className="menu-layout">
         <div className="menu-side">
           <Panel title="🛒 Compras recientes">
             {recentPurchases.length === 0 ? (
-              <div style={{ fontSize: 13, color: '#94a3b8' }}>
+              <div style={{ fontSize: 13, color: COLORS.muted }}>
                 Cuando escaneéis un ticket, los productos aparecerán aquí como inspiración.
               </div>
             ) : (
@@ -228,8 +299,8 @@ export default function MenuScreen() {
                 {recentPurchases.map(item => (
                   <span key={item.name} style={{
                     display: 'inline-flex', alignItems: 'center', gap: 6,
-                    padding: '6px 6px 6px 12px', borderRadius: 20, backgroundColor: '#f0f4f8',
-                    color: '#334155', fontSize: 13, fontWeight: 500, textTransform: 'capitalize',
+                    padding: '5px 5px 5px 11px', borderRadius: 8, border: border(2),
+                    backgroundColor: COLORS.card, color: COLORS.ink, fontSize: 12.5, fontWeight: 600, textTransform: 'capitalize',
                   }}>
                     {item.name}
                     <button
@@ -237,7 +308,7 @@ export default function MenuScreen() {
                       title="Quitar de la lista"
                       style={{
                         width: 18, height: 18, borderRadius: '50%', border: 'none',
-                        backgroundColor: '#e2e8f0', color: '#64748b', fontSize: 11,
+                        backgroundColor: COLORS.bg, color: COLORS.muted, fontSize: 11,
                         lineHeight: '18px', cursor: 'pointer', flexShrink: 0,
                       }}
                     >
@@ -249,251 +320,303 @@ export default function MenuScreen() {
             )}
           </Panel>
 
-          <Panel title="💡 Ideas">
-            <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 10 }}>
-              Arrastra una idea al menú, o toca un plato y luego una idea para rellenarlo.
+          {/* Panel de ideas: nota amarilla, como en el mockup */}
+          <div style={{
+            backgroundColor: COLORS.yellow, border: border(2.5), borderRadius: 14,
+            boxShadow: shadow(), padding: 15, marginBottom: 16,
+          }}>
+            <div style={{ fontFamily: FONT_HEAD, fontWeight: 700, fontSize: 14.5, color: COLORS.ink, marginBottom: 3 }}>
+              💡 Ideas
             </div>
-            <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
+            <div style={{ fontSize: 11.5, color: '#5C4B2E', marginBottom: 12 }}>
+              Arrastra una idea al menú, o toca un plato y luego una idea.
+            </div>
+            <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
               {([null, 'vegetariano', 'con_carne'] as const).map(tag => (
                 <button
                   key={String(tag)}
                   onClick={() => setDietFilter(tag)}
                   style={{
-                    padding: '4px 9px', borderRadius: 8, fontSize: 11, cursor: 'pointer',
-                    border: `1.5px solid ${dietFilter === tag ? BLUE : '#e2e8f0'}`,
-                    backgroundColor: dietFilter === tag ? '#eff6ff' : '#fff',
-                    color: dietFilter === tag ? BLUE : '#94a3b8', fontWeight: 600,
+                    padding: '5px 11px', borderRadius: 8, fontSize: 11, cursor: 'pointer',
+                    border: border(2), fontFamily: FONT_HEAD, fontWeight: 700,
+                    backgroundColor: dietFilter === tag ? COLORS.ink : COLORS.card,
+                    color: dietFilter === tag ? COLORS.yellow : COLORS.ink,
                   }}
                 >
-                  {tag === null ? 'Todas' : tag === 'vegetariano' ? '🥦' : '🍖'}
+                  {tag === null ? 'Todas' : tag === 'vegetariano' ? '🥦 Veggie' : '🍖 Con carne'}
                 </button>
               ))}
             </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: customIdeas.length > 0 ? 14 : 0 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {filteredIdeas.map(idea => (
                 <button
                   key={idea.id}
                   {...draggableIdea(idea.name)}
                   onClick={() => applyIdea(idea.name)}
-                  disabled={!selectedCell}
                   style={{
-                    padding: '7px 12px', borderRadius: 20, border: '1.5px solid #e2e8f0',
-                    backgroundColor: '#fff', color: '#334155', fontSize: 13, fontWeight: 500,
-                    cursor: 'grab', opacity: selectedCell ? 1 : 0.85,
+                    display: 'flex', alignItems: 'center', gap: 8, textAlign: 'left',
+                    border: border(2), borderRadius: 10, padding: '9px 11px',
+                    backgroundColor: COLORS.card, color: COLORS.ink, fontSize: 12.5, fontWeight: 600, cursor: 'grab',
                   }}
                 >
                   {idea.dietTag === 'vegetariano' ? '🥦' : '🍖'} {idea.name}
                 </button>
               ))}
-            </div>
-            {customIdeas.length > 0 && (
-              <>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', marginBottom: 8 }}>
-                  🧑‍🍳 Vuestras recetas
-                </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {customIdeas.length > 0 && (
+                <>
+                  <div style={{ fontFamily: FONT_HEAD, fontSize: 11, fontWeight: 700, color: '#5C4B2E', textTransform: 'uppercase', marginTop: 6 }}>
+                    🧑‍🍳 Vuestras recetas
+                  </div>
                   {customIdeas.map(idea => (
-                    <span
+                    <div
                       key={idea.name}
                       {...draggableIdea(idea.name)}
-                      style={{
-                        display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'grab',
-                        padding: '6px 6px 6px 12px', borderRadius: 20, border: '1.5px solid #e2e8f0',
-                        backgroundColor: '#fff', color: '#334155', fontSize: 13, fontWeight: 500,
-                      }}
                       onClick={() => applyIdea(idea.name)}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 8, cursor: 'grab',
+                        border: border(2), borderRadius: 10, padding: '9px 11px',
+                        backgroundColor: COLORS.card, color: COLORS.ink, fontSize: 12.5, fontWeight: 600,
+                      }}
                     >
-                      {idea.name}
+                      <span style={{ flex: 1 }}>{idea.name}</span>
                       <button
                         onClick={e => { e.stopPropagation(); dispatch(removeCustomIdea(idea.name)); }}
                         title="Quitar idea"
                         style={{
                           width: 18, height: 18, borderRadius: '50%', border: 'none',
-                          backgroundColor: '#e2e8f0', color: '#64748b', fontSize: 11,
+                          backgroundColor: COLORS.bg, color: COLORS.muted, fontSize: 11,
                           lineHeight: '18px', cursor: 'pointer', flexShrink: 0,
                         }}
                       >
                         ×
                       </button>
-                    </span>
+                    </div>
                   ))}
-                </div>
-              </>
-            )}
-          </Panel>
+                </>
+              )}
+            </div>
+          </div>
         </div>
 
-        {/* Calendario semanal */}
         <div className="menu-main">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-            <button onClick={() => dispatch(setCurrentWeekStart(addWeeksISO(currentWeekStart, -1)))} style={{
-              width: 40, height: 40, borderRadius: 10, border: '2px solid #e2e8f0',
-              backgroundColor: '#fff', fontSize: 18, cursor: 'pointer', flexShrink: 0,
-            }}>‹</button>
-            <div style={{
-              flex: 1, textAlign: 'center', padding: '10px 4px', borderRadius: 10,
-              backgroundColor: '#fff', border: '2px solid #e2e8f0', fontSize: 14, fontWeight: 700, color: '#1e293b',
-            }}>
-              Semana del {formatWeekRange(currentWeekStart)}
-            </div>
-            <button onClick={() => dispatch(setCurrentWeekStart(addWeeksISO(currentWeekStart, 1)))} style={{
-              width: 40, height: 40, borderRadius: 10, border: '2px solid #e2e8f0',
-              backgroundColor: '#fff', fontSize: 18, cursor: 'pointer', flexShrink: 0,
-            }}>›</button>
-          </div>
-          <button onClick={() => dispatch(setCurrentWeekStart(getMondayISO(new Date())))} style={{
-            display: 'block', margin: '8px auto 18px',
-            padding: '6px 14px', borderRadius: 20, border: 'none', backgroundColor: '#eff6ff',
-            color: BLUE, fontWeight: 600, fontSize: 12, cursor: 'pointer',
-          }}>
-            Hoy
-          </button>
-
-          {loading && (
-            <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: 13, marginBottom: 12 }}>Cargando…</div>
-          )}
-
-          <div className="responsive-card-grid">
-          {WEEK_DAYS.map(({ key, label }, index) => {
-            const today = isToday(currentWeekStart, index);
-            return (
-              <div key={key} style={{
-                backgroundColor: '#fff', borderRadius: 16, overflow: 'hidden',
-                boxShadow: '0 1px 8px rgba(0,0,0,0.06)',
-                border: today ? `2px solid ${BLUE}` : '2px solid transparent',
-              }}>
+          {view === 'week' ? (
+            <>
+              {/* Navegador de semana */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                <button onClick={() => dispatch(setCurrentWeekStart(addWeeksISO(currentWeekStart, -1)))} style={arrowBtn}>‹</button>
                 <div style={{
-                  display: 'flex', alignItems: 'baseline', gap: 8, padding: '10px 16px',
-                  backgroundColor: today ? BLUE : '#f8fafc', borderBottom: '1px solid #e2e8f0',
+                  flex: 1, textAlign: 'center', padding: '9px 4px', borderRadius: 10,
+                  backgroundColor: COLORS.card, border: border(2.5), boxShadow: shadow(3),
+                  fontFamily: FONT_HEAD, fontSize: 14, fontWeight: 700, color: COLORS.ink,
                 }}>
-                  <span style={{ fontSize: 14, fontWeight: 800, color: today ? '#fff' : '#1e293b', textTransform: 'uppercase' }}>{label}</span>
-                  <span style={{ fontSize: 12, color: today ? 'rgba(255,255,255,0.8)' : '#94a3b8' }}>
-                    {getDayDateLabel(currentWeekStart, index)}
-                  </span>
+                  Semana del {formatWeekRange(currentWeekStart)}
                 </div>
+                <button onClick={() => dispatch(setCurrentWeekStart(addWeeksISO(currentWeekStart, 1)))} style={arrowBtn}>›</button>
+              </div>
+              <button onClick={() => dispatch(setCurrentWeekStart(getMondayISO(new Date())))} style={{
+                display: 'block', margin: '10px auto 18px',
+                padding: '6px 14px', borderRadius: 20, border: border(2), backgroundColor: COLORS.card,
+                fontFamily: FONT_HEAD, color: COLORS.ink, fontWeight: 700, fontSize: 11.5, cursor: 'pointer',
+              }}>
+                Hoy
+              </button>
 
-                <div style={{ padding: '12px 16px' }}>
-                  {SLOTS.map((slot, si) => {
-                    const rows = getRows(key, slot.id);
-                    return (
-                      <div key={slot.id} style={{
-                        display: 'flex', alignItems: 'stretch', marginBottom: si === 0 ? 12 : 0,
-                        borderRadius: 12, overflow: 'hidden', border: '1px solid #e2e8f0',
-                      }}>
-                        {/* Etiqueta lateral */}
-                        <div style={{
-                          width: 30, flexShrink: 0, backgroundColor: slot.solid,
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+              {loading && (
+                <div style={{ textAlign: 'center', color: COLORS.muted, fontSize: 13, marginBottom: 12 }}>Cargando…</div>
+              )}
+
+              <div className="responsive-card-grid">
+              {WEEK_DAYS.map(({ key, label }, index) => {
+                const today = isToday(currentWeekStart, index);
+                return (
+                  <div key={key}>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 9, padding: '0 2px 8px' }}>
+                      <span style={{ fontFamily: FONT_HEAD, fontWeight: 700, fontSize: 16, color: COLORS.ink }}>{label}</span>
+                      <span style={{ fontSize: 12, color: COLORS.muted }}>{getDayDateLabel(currentWeekStart, index)}</span>
+                      {today && (
+                        <span style={{
+                          marginLeft: 'auto', backgroundColor: COLORS.ink, color: COLORS.yellow,
+                          fontFamily: FONT_HEAD, fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase',
+                          padding: '3px 10px', borderRadius: 6,
                         }}>
-                          <span style={{
-                            display: 'inline-block', transform: 'rotate(-90deg)', whiteSpace: 'nowrap',
-                            fontSize: 11, fontWeight: 800, color: '#fff', letterSpacing: 1, textTransform: 'uppercase',
-                          }}>
-                            {slot.icon} {slot.label}
-                          </span>
-                        </div>
+                          Hoy
+                        </span>
+                      )}
+                    </div>
 
-                        <div
-                          style={{ flex: 1, backgroundColor: slot.bg, padding: '10px 12px' }}
-                          onDragOver={e => rows.length === 0 && e.preventDefault()}
-                          onDrop={e => {
-                            if (rows.length > 0) return;
-                            e.preventDefault();
-                            const name = e.dataTransfer.getData('text/plain');
-                            if (name) addRowWithDish(key, slot.id, name);
-                          }}
-                        >
-                          {rows.map(row => (
-                            <div key={row.id} style={{
-                              display: 'flex', alignItems: 'stretch', gap: 0, marginBottom: 8,
-                              borderRadius: 10, overflow: 'hidden', border: '1px solid #e2e8f0',
+                    {SLOTS.map(slot => {
+                      const rows = getRows(key, slot.id);
+                      return (
+                        <div key={slot.id} style={{
+                          backgroundColor: COLORS.card, border: border(2.5, slot.dot), borderRadius: 14,
+                          boxShadow: shadow(), padding: '12px 14px 13px', marginBottom: 10,
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                            <span style={{ width: 9, height: 9, borderRadius: '50%', backgroundColor: slot.dot, border: `1.5px solid ${COLORS.ink}` }} />
+                            <span style={{
+                              fontFamily: FONT_HEAD, fontSize: 10.5, fontWeight: 700, letterSpacing: 0.6,
+                              textTransform: 'uppercase', color: slot.accent,
                             }}>
-                              {row.type === 'compartido' ? (
-                                <AutoTextarea
-                                  value={getFieldValue(key, slot.id, row, 'shared')}
-                                  placeholder="Plato compartido…"
-                                  onFocus={() => setSelectedCell({ day: key, slot: slot.id, rowId: row.id, field: 'shared' })}
-                                  onChange={v => handleFieldChange(key, slot.id, row.id, 'shared', v)}
-                                  onBlur={() => commitField(key, slot.id, row.id, 'shared')}
-                                  onDrop={name => setFieldNow(key, slot.id, row.id, 'shared', name)}
+                              {slot.icon} {slot.label}
+                            </span>
+                          </div>
+
+                          <div
+                            onDragOver={e => rows.length === 0 && e.preventDefault()}
+                            onDrop={e => {
+                              if (rows.length > 0) return;
+                              e.preventDefault();
+                              const name = e.dataTransfer.getData('text/plain');
+                              if (name) addRowWithDish(key, slot.id, name);
+                            }}
+                          >
+                            {rows.length === 0 && (
+                              <div style={{
+                                border: `2px dashed ${COLORS.dashed}`, borderRadius: 10, padding: 11,
+                                textAlign: 'center', color: COLORS.mutedLighter, fontSize: 12, marginBottom: 8,
+                              }}>
+                                Aún no has planificado {slot.id === 'comida' ? 'la comida' : 'la cena'} de este día
+                              </div>
+                            )}
+
+                            {rows.map(row => (
+                              <div key={row.id} style={{ display: 'flex', alignItems: 'stretch', gap: 6, marginBottom: 8 }}>
+                                {row.type === 'compartido' ? (
+                                  <AutoTextarea
+                                    value={getFieldValue(key, slot.id, row, 'shared')}
+                                    placeholder="Plato compartido…"
+                                    onFocus={() => setSelectedCell({ day: key, slot: slot.id, rowId: row.id, field: 'shared' })}
+                                    onChange={v => handleFieldChange(key, slot.id, row.id, 'shared', v)}
+                                    onBlur={() => commitField(key, slot.id, row.id, 'shared')}
+                                    onDrop={name => setFieldNow(key, slot.id, row.id, 'shared', name)}
+                                    style={{
+                                      flex: 1, fontSize: 14, fontWeight: 700, color: COLORS.ink, padding: '2px 0',
+                                      outline: isFieldSelected(key, slot.id, row.id, 'shared') ? `2px solid ${COLORS.ink}` : 'none',
+                                    }}
+                                  />
+                                ) : (
+                                  <div style={{ display: 'flex', gap: 8, flex: 1 }}>
+                                    <div style={{ flex: 1, border: border(2), borderRadius: 10, padding: '8px 10px', backgroundColor: COLORS.cardAlt }}>
+                                      <div style={{ fontFamily: FONT_HEAD, fontSize: 9, fontWeight: 700, color: MARIA_F.text, marginBottom: 3 }}>MARIA F</div>
+                                      <AutoTextarea
+                                        value={getFieldValue(key, slot.id, row, 'personF')}
+                                        placeholder="Su plato…"
+                                        onFocus={() => setSelectedCell({ day: key, slot: slot.id, rowId: row.id, field: 'personF' })}
+                                        onChange={v => handleFieldChange(key, slot.id, row.id, 'personF', v)}
+                                        onBlur={() => commitField(key, slot.id, row.id, 'personF')}
+                                        onDrop={name => setFieldNow(key, slot.id, row.id, 'personF', name)}
+                                        style={{
+                                          fontSize: 12.5, fontWeight: 600, color: COLORS.ink,
+                                          outline: isFieldSelected(key, slot.id, row.id, 'personF') ? `2px solid ${COLORS.ink}` : 'none',
+                                        }}
+                                      />
+                                    </div>
+                                    <div style={{ flex: 1, border: border(2), borderRadius: 10, padding: '8px 10px', backgroundColor: COLORS.cardAlt }}>
+                                      <div style={{ fontFamily: FONT_HEAD, fontSize: 9, fontWeight: 700, color: MARIA_N.text, marginBottom: 3 }}>MARIA N</div>
+                                      <AutoTextarea
+                                        value={getFieldValue(key, slot.id, row, 'personN')}
+                                        placeholder="Su plato…"
+                                        onFocus={() => setSelectedCell({ day: key, slot: slot.id, rowId: row.id, field: 'personN' })}
+                                        onChange={v => handleFieldChange(key, slot.id, row.id, 'personN', v)}
+                                        onBlur={() => commitField(key, slot.id, row.id, 'personN')}
+                                        onDrop={name => setFieldNow(key, slot.id, row.id, 'personN', name)}
+                                        style={{
+                                          fontSize: 12.5, fontWeight: 600, color: COLORS.ink,
+                                          outline: isFieldSelected(key, slot.id, row.id, 'personN') ? `2px solid ${COLORS.ink}` : 'none',
+                                        }}
+                                      />
+                                    </div>
+                                  </div>
+                                )}
+                                <button
+                                  onClick={() => removeRow(key, slot.id, row.id)}
+                                  title="Quitar fila"
                                   style={{
-                                    flex: 1, outline: isFieldSelected(key, slot.id, row.id, 'shared') ? `2px solid ${BLUE}` : 'none',
-                                    fontSize: 13, fontWeight: 600, color: COMPARTIDO.text, padding: '10px 12px',
-                                    backgroundColor: COMPARTIDO.bg,
+                                    width: 24, flexShrink: 0, border: 'none', background: 'none',
+                                    color: COLORS.mutedLighter, fontSize: 15, cursor: 'pointer',
                                   }}
-                                />
-                              ) : (
-                                <>
-                                  <div style={{ flex: 1, backgroundColor: MARIA_F.bg, borderRight: `1px solid ${MARIA_F.border}` }}>
-                                    <div style={{ fontSize: 10, fontWeight: 700, color: MARIA_F.text, padding: '4px 12px 0' }}>MARIA F</div>
-                                    <AutoTextarea
-                                      value={getFieldValue(key, slot.id, row, 'personF')}
-                                      placeholder="Su plato…"
-                                      onFocus={() => setSelectedCell({ day: key, slot: slot.id, rowId: row.id, field: 'personF' })}
-                                      onChange={v => handleFieldChange(key, slot.id, row.id, 'personF', v)}
-                                      onBlur={() => commitField(key, slot.id, row.id, 'personF')}
-                                      onDrop={name => setFieldNow(key, slot.id, row.id, 'personF', name)}
-                                      style={{
-                                        outline: isFieldSelected(key, slot.id, row.id, 'personF') ? `2px solid ${BLUE}` : 'none',
-                                        fontSize: 13, fontWeight: 600, color: MARIA_F.text, padding: '2px 12px 8px',
-                                        backgroundColor: 'transparent',
-                                      }}
-                                    />
-                                  </div>
-                                  <div style={{ flex: 1, backgroundColor: MARIA_N.bg }}>
-                                    <div style={{ fontSize: 10, fontWeight: 700, color: MARIA_N.text, padding: '4px 12px 0' }}>MARIA N</div>
-                                    <AutoTextarea
-                                      value={getFieldValue(key, slot.id, row, 'personN')}
-                                      placeholder="Su plato…"
-                                      onFocus={() => setSelectedCell({ day: key, slot: slot.id, rowId: row.id, field: 'personN' })}
-                                      onChange={v => handleFieldChange(key, slot.id, row.id, 'personN', v)}
-                                      onBlur={() => commitField(key, slot.id, row.id, 'personN')}
-                                      onDrop={name => setFieldNow(key, slot.id, row.id, 'personN', name)}
-                                      style={{
-                                        outline: isFieldSelected(key, slot.id, row.id, 'personN') ? `2px solid ${BLUE}` : 'none',
-                                        fontSize: 13, fontWeight: 600, color: MARIA_N.text, padding: '2px 12px 8px',
-                                        backgroundColor: 'transparent',
-                                      }}
-                                    />
-                                  </div>
-                                </>
-                              )}
-                              <button
-                                onClick={() => removeRow(key, slot.id, row.id)}
-                                title="Quitar fila"
-                                style={{
-                                  width: 28, flexShrink: 0, border: 'none', borderLeft: '1px solid rgba(0,0,0,0.06)',
-                                  backgroundColor: '#fff', color: '#cbd5e1', fontSize: 14, cursor: 'pointer',
-                                }}
-                              >
-                                ×
+                                >
+                                  ×
+                                </button>
+                              </div>
+                            ))}
+
+                            <div style={{ display: 'flex', gap: 8 }}>
+                              <button onClick={() => addRow(key, slot.id, 'compartido')} style={{
+                                flex: 1, border: `2px dashed ${COLORS.dashed}`, borderRadius: 10, padding: 8,
+                                backgroundColor: 'transparent', color: COLORS.mutedLight, fontSize: 11.5, fontWeight: 700, cursor: 'pointer',
+                              }}>
+                                + Plato compartido
+                              </button>
+                              <button onClick={() => addRow(key, slot.id, 'separado')} style={{
+                                flex: 1, border: `2px dashed ${COLORS.dashed}`, borderRadius: 10, padding: 8,
+                                backgroundColor: 'transparent', color: COLORS.mutedLight, fontSize: 11.5, fontWeight: 700, cursor: 'pointer',
+                              }}>
+                                + Plato para cada una
                               </button>
                             </div>
-                          ))}
-
-                          <div style={{ display: 'flex', gap: 6, marginTop: rows.length > 0 ? 4 : 0 }}>
-                            <button onClick={() => addRow(key, slot.id, 'compartido')} style={{
-                              flex: 1, padding: '6px 8px', borderRadius: 8, border: '1.5px dashed #cbd5e1',
-                              backgroundColor: '#fff', color: '#64748b', fontSize: 11, fontWeight: 600, cursor: 'pointer',
-                            }}>
-                              + Plato compartido
-                            </button>
-                            <button onClick={() => addRow(key, slot.id, 'separado')} style={{
-                              flex: 1, padding: '6px 8px', borderRadius: 8, border: '1.5px dashed #cbd5e1',
-                              backgroundColor: '#fff', color: '#64748b', fontSize: 11, fontWeight: 600, cursor: 'pointer',
-                            }}>
-                              + Plato para cada una
-                            </button>
                           </div>
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                      );
+                    })}
+                  </div>
+                );
+              })}
               </div>
-            );
-          })}
-          </div>
+            </>
+          ) : (
+            <>
+              {/* Navegador de mes */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14, marginBottom: 16 }}>
+                <button onClick={() => setMonthDate(d => addMonths(d, -1))} style={arrowBtn}>‹</button>
+                <div style={{ fontFamily: FONT_HEAD, fontWeight: 700, fontSize: 16, color: COLORS.ink }}>
+                  {getMonthLabel(monthDate)}
+                </div>
+                <button onClick={() => setMonthDate(d => addMonths(d, 1))} style={arrowBtn}>›</button>
+              </div>
+
+              <div className="month-grid">
+                {dowLabels.map(d => <div key={d} className="dow">{d}</div>)}
+                {monthGrid.map(cell => {
+                  const menu = monthMenus[cell.weekStart];
+                  const comida = menu ? miniDish(rowsFrom(menu, WEEK_DAYS[cell.dayIndex].key, 'comida')) : '';
+                  const cena = menu ? miniDish(rowsFrom(menu, WEEK_DAYS[cell.dayIndex].key, 'cena')) : '';
+                  const isToday_ = cell.dateISO === getTodayISO();
+                  return (
+                    <div
+                      key={cell.dateISO}
+                      onClick={() => cell.inCurrentMonth && goToDay(cell)}
+                      style={{
+                        backgroundColor: isToday_ ? COLORS.yellow : COLORS.card,
+                        border: border(2), borderRadius: 9, minHeight: 60, padding: '5px 4px 4px',
+                        cursor: cell.inCurrentMonth ? 'pointer' : 'default',
+                        opacity: cell.inCurrentMonth ? 1 : 0.35,
+                        borderStyle: cell.inCurrentMonth ? 'solid' : 'dashed',
+                      }}
+                    >
+                      <div style={{ fontFamily: FONT_HEAD, fontSize: 11, fontWeight: 700, marginBottom: 3, color: COLORS.ink }}>{cell.day}</div>
+                      {comida && (
+                        <div style={{ fontSize: 8.5, lineHeight: 1.2, fontWeight: 700, color: COLORS.orangeText, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {comida}
+                        </div>
+                      )}
+                      {cena && (
+                        <div style={{ fontSize: 8.5, lineHeight: 1.2, fontWeight: 700, color: COLORS.tealText, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {cena}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginTop: 14, fontSize: 11.5 }}>
+                <span><span style={{ width: 9, height: 9, borderRadius: '50%', display: 'inline-block', marginRight: 5, border: `1.5px solid ${COLORS.ink}`, backgroundColor: COLORS.orange }} />Comida</span>
+                <span><span style={{ width: 9, height: 9, borderRadius: '50%', display: 'inline-block', marginRight: 5, border: `1.5px solid ${COLORS.ink}`, backgroundColor: COLORS.teal }} />Cena</span>
+              </div>
+              <div style={{ textAlign: 'center', fontSize: 11, opacity: 0.55, marginTop: 10 }}>Toca un día para ver el detalle</div>
+            </>
+          )}
         </div>
       </div>
     </div>

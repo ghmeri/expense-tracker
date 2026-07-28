@@ -3,8 +3,8 @@ import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../store';
 import { fetchRecipes, persistRecipes } from '../store/recipeSlice';
 import { DietTag, Recipe } from '../types';
+import { COLORS, FONT_HEAD, border, shadow } from '../theme';
 
-const BLUE = '#2563eb';
 const STARS = [1, 2, 3, 4, 5];
 
 const DIET_OPTIONS: { id: DietTag; label: string; icon: string }[] = [
@@ -44,7 +44,7 @@ function Stars({ value, onChange }: { value: number; onChange: (v: number) => vo
         <button
           key={n}
           onClick={() => onChange(n === value ? 0 : n)}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, padding: 0, color: n <= value ? '#f59e0b' : '#e2e8f0' }}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, padding: 0, color: n <= value ? COLORS.orange : COLORS.dashed }}
         >
           ★
         </button>
@@ -124,16 +124,16 @@ export default function RecipesScreen() {
   const filtered = dietFilter ? recipes.filter(r => r.dietTag === dietFilter) : recipes;
 
   return (
-    <div style={{ overflowY: 'auto', height: '100%', padding: '20px 20px 40px', backgroundColor: '#f0f4f8' }}>
-      <div style={{ fontSize: 20, fontWeight: 800, color: '#1e293b', marginBottom: 4 }}>📖 Recetario</div>
-      <div style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>
+    <div style={{ overflowY: 'auto', height: '100%', padding: '20px 20px 40px', backgroundColor: COLORS.bg }}>
+      <div style={{ fontFamily: FONT_HEAD, fontSize: 19, fontWeight: 700, color: COLORS.ink, marginBottom: 4 }}>📖 Recetario</div>
+      <div style={{ fontSize: 13, color: COLORS.muted, marginBottom: 16 }}>
         Guardad las recetas que os han gustado, con ingredientes, tiempo, foto y puntuación.
       </div>
 
       {/* Añadir receta */}
       <div style={{
-        backgroundColor: '#fff', borderRadius: 16, padding: '16px 18px',
-        boxShadow: '0 1px 8px rgba(0,0,0,0.06)', marginBottom: 16,
+        backgroundColor: COLORS.card, borderRadius: 16, padding: '16px 18px',
+        border: border(2), boxShadow: shadow(3), marginBottom: 16,
       }}>
         <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
           <input
@@ -142,13 +142,13 @@ export default function RecipesScreen() {
             onKeyDown={e => { if (e.key === 'Enter') addRecipe(); }}
             placeholder="Nombre de la receta…"
             style={{
-              flex: 1, border: '2px solid #e2e8f0', borderRadius: 10, padding: '10px 12px',
+              flex: 1, border: border(2), borderRadius: 10, padding: '10px 12px',
               fontSize: 14, outline: 'none',
             }}
           />
           <button onClick={addRecipe} style={{
-            padding: '10px 16px', borderRadius: 10, border: 'none', backgroundColor: BLUE,
-            color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer',
+            padding: '10px 16px', borderRadius: 10, border: border(2), backgroundColor: COLORS.yellow,
+            color: COLORS.ink, fontFamily: FONT_HEAD, fontWeight: 700, fontSize: 13, cursor: 'pointer',
           }}>
             + Añadir
           </button>
@@ -160,9 +160,9 @@ export default function RecipesScreen() {
               onClick={() => setNewDiet(opt.id)}
               style={{
                 flex: 1, padding: '8px 10px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                border: `1.5px solid ${newDiet === opt.id ? BLUE : '#e2e8f0'}`,
-                backgroundColor: newDiet === opt.id ? '#eff6ff' : '#fff',
-                color: newDiet === opt.id ? BLUE : '#64748b',
+                border: border(1.5, newDiet === opt.id ? COLORS.ink : COLORS.dashed),
+                backgroundColor: newDiet === opt.id ? COLORS.yellow : COLORS.card,
+                color: COLORS.ink,
               }}
             >
               {opt.icon} {opt.label}
@@ -179,9 +179,9 @@ export default function RecipesScreen() {
             onClick={() => setDietFilter(tag)}
             style={{
               padding: '6px 12px', borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: 'pointer',
-              border: `1.5px solid ${dietFilter === tag ? BLUE : '#e2e8f0'}`,
-              backgroundColor: dietFilter === tag ? '#eff6ff' : '#fff',
-              color: dietFilter === tag ? BLUE : '#64748b',
+              border: border(1.5, dietFilter === tag ? COLORS.ink : COLORS.dashed),
+              backgroundColor: dietFilter === tag ? COLORS.ink : COLORS.card,
+              color: dietFilter === tag ? COLORS.yellow : COLORS.ink,
             }}
           >
             {tag === null ? 'Todas' : tag === 'vegetariano' ? '🥦 Vegetarianas' : '🍖 Con carne'}
@@ -190,25 +190,26 @@ export default function RecipesScreen() {
       </div>
 
       {loading && (
-        <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: 13, marginBottom: 12 }}>Cargando…</div>
+        <div style={{ textAlign: 'center', color: COLORS.mutedLighter, fontSize: 13, marginBottom: 12 }}>Cargando…</div>
       )}
 
       <div className="responsive-card-grid">
       {filtered.length === 0 ? (
-        <div style={{ textAlign: 'center', marginTop: 40, color: '#94a3b8', fontSize: 14 }}>
+        <div style={{ textAlign: 'center', marginTop: 40, color: COLORS.mutedLighter, fontSize: 14 }}>
           Aún no hay recetas guardadas.
         </div>
       ) : (
         filtered.map(recipe => (
           <div key={recipe.id} style={{
-            backgroundColor: '#fff', borderRadius: 14, padding: '14px 16px',
-            boxShadow: '0 1px 8px rgba(0,0,0,0.06)',
+            backgroundColor: COLORS.card, borderRadius: 14, padding: '14px 16px',
+            border: border(recipe.dietTag === 'vegetariano' ? 2 : 2, recipe.dietTag === 'vegetariano' ? COLORS.teal : COLORS.orange),
+            boxShadow: shadow(3),
           }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, gap: 8 }}>
-              <div style={{ fontSize: 15, fontWeight: 700, color: '#1e293b' }}>{recipe.name}</div>
+              <div style={{ fontFamily: FONT_HEAD, fontSize: 14.5, fontWeight: 700, color: COLORS.ink }}>{recipe.name}</div>
               <button onClick={() => removeRecipe(recipe.id)} style={{
-                width: 24, height: 24, borderRadius: '50%', border: 'none', backgroundColor: '#f1f5f9',
-                color: '#94a3b8', fontSize: 13, cursor: 'pointer', flexShrink: 0,
+                width: 24, height: 24, borderRadius: '50%', border: 'none', backgroundColor: COLORS.cardAlt,
+                color: COLORS.mutedLighter, fontSize: 13, cursor: 'pointer', flexShrink: 0,
               }}>
                 ×
               </button>
@@ -222,13 +223,13 @@ export default function RecipesScreen() {
                     src={recipe.photoUri}
                     alt={recipe.name}
                     onClick={() => setLightbox(recipe.photoUri!)}
-                    style={{ width: '100%', maxHeight: 160, objectFit: 'cover', borderRadius: 10, cursor: 'pointer' }}
+                    style={{ width: '100%', maxHeight: 160, objectFit: 'cover', borderRadius: 10, border: border(1.5), cursor: 'pointer' }}
                   />
                   <button
                     onClick={() => updateRecipe(recipe.id, { photoUri: undefined })}
                     style={{
                       position: 'absolute', top: 6, right: 6, width: 24, height: 24, borderRadius: '50%',
-                      border: 'none', backgroundColor: 'rgba(0,0,0,0.55)', color: '#fff', fontSize: 13, cursor: 'pointer',
+                      border: 'none', backgroundColor: 'rgba(38,32,26,0.65)', color: '#fff', fontSize: 13, cursor: 'pointer',
                     }}
                   >
                     ×
@@ -238,8 +239,8 @@ export default function RecipesScreen() {
                 <button
                   onClick={() => fileInputs.current[recipe.id]?.click()}
                   style={{
-                    width: '100%', padding: '10px', borderRadius: 10, border: '1.5px dashed #cbd5e1',
-                    backgroundColor: '#f8fafc', color: '#64748b', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                    width: '100%', padding: '10px', borderRadius: 10, border: `1.5px dashed ${COLORS.dashed}`,
+                    backgroundColor: COLORS.cardAlt, color: COLORS.mutedLight, fontSize: 12, fontWeight: 600, cursor: 'pointer',
                   }}
                 >
                   📷 Añadir foto
@@ -263,9 +264,9 @@ export default function RecipesScreen() {
                     onClick={() => updateRecipe(recipe.id, { dietTag: opt.id })}
                     style={{
                       padding: '4px 9px', borderRadius: 8, fontSize: 11, fontWeight: 600, cursor: 'pointer',
-                      border: `1.5px solid ${recipe.dietTag === opt.id ? BLUE : '#e2e8f0'}`,
-                      backgroundColor: recipe.dietTag === opt.id ? '#eff6ff' : '#fff',
-                      color: recipe.dietTag === opt.id ? BLUE : '#94a3b8',
+                      border: border(1.5, recipe.dietTag === opt.id ? COLORS.ink : COLORS.dashed),
+                      backgroundColor: recipe.dietTag === opt.id ? COLORS.yellow : COLORS.card,
+                      color: COLORS.ink,
                     }}
                   >
                     {opt.icon}
@@ -281,8 +282,8 @@ export default function RecipesScreen() {
                   onChange={e => setTimeDraft(prev => ({ ...prev, [recipe.id]: e.target.value }))}
                   onBlur={() => commitTime(recipe.id)}
                   style={{
-                    width: 80, border: 'none', borderBottom: '1px solid #e2e8f0', outline: 'none',
-                    fontSize: 12, color: '#64748b', padding: '2px 0',
+                    width: 80, border: 'none', borderBottom: `1.5px solid ${COLORS.dashed}`, outline: 'none',
+                    fontSize: 12, color: COLORS.muted, padding: '2px 0', background: 'transparent',
                   }}
                 />
               </div>
@@ -290,17 +291,17 @@ export default function RecipesScreen() {
 
             {/* Ingredientes */}
             <div style={{ marginBottom: 10 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', marginBottom: 6 }}>
+              <div style={{ fontFamily: FONT_HEAD, fontSize: 11, fontWeight: 700, color: COLORS.muted, textTransform: 'uppercase', marginBottom: 6 }}>
                 🥕 Ingredientes
               </div>
               {recipe.ingredients.length > 0 && (
                 <ul style={{ margin: '0 0 8px', paddingLeft: 18 }}>
                   {recipe.ingredients.map((ing, i) => (
-                    <li key={i} style={{ fontSize: 13, color: '#334155', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <li key={i} style={{ fontSize: 13, color: COLORS.ink, display: 'flex', alignItems: 'center', gap: 6 }}>
                       <span style={{ flex: 1 }}>{ing}</span>
                       <button
                         onClick={() => removeIngredient(recipe, i)}
-                        style={{ background: 'none', border: 'none', color: '#cbd5e1', fontSize: 13, cursor: 'pointer' }}
+                        style={{ background: 'none', border: 'none', color: COLORS.mutedLighter, fontSize: 13, cursor: 'pointer' }}
                       >
                         ×
                       </button>
@@ -315,13 +316,13 @@ export default function RecipesScreen() {
                   onKeyDown={e => { if (e.key === 'Enter') addIngredient(recipe); }}
                   placeholder="Añadir ingrediente…"
                   style={{
-                    flex: 1, border: '1px solid #e2e8f0', borderRadius: 8, padding: '6px 10px',
+                    flex: 1, border: border(1.5), borderRadius: 8, padding: '6px 10px',
                     fontSize: 12, outline: 'none',
                   }}
                 />
                 <button onClick={() => addIngredient(recipe)} style={{
-                  padding: '6px 10px', borderRadius: 8, border: 'none', backgroundColor: '#eff6ff',
-                  color: BLUE, fontWeight: 700, fontSize: 14, cursor: 'pointer',
+                  padding: '6px 10px', borderRadius: 8, border: border(1.5), backgroundColor: COLORS.yellow,
+                  color: COLORS.ink, fontWeight: 700, fontSize: 14, cursor: 'pointer',
                 }}>
                   ＋
                 </button>
@@ -335,8 +336,8 @@ export default function RecipesScreen() {
               onBlur={() => commitNotes(recipe.id)}
               rows={1}
               style={{
-                width: '100%', border: 'none', borderTop: '1px solid #f1f5f9', outline: 'none',
-                fontSize: 13, color: '#64748b', paddingTop: 8, resize: 'vertical', fontFamily: 'inherit',
+                width: '100%', border: 'none', borderTop: `1.5px solid ${COLORS.dashed}`, outline: 'none',
+                fontSize: 13, color: COLORS.muted, paddingTop: 8, resize: 'vertical', fontFamily: 'inherit', background: 'transparent',
               }}
             />
           </div>
@@ -346,7 +347,7 @@ export default function RecipesScreen() {
 
       {lightbox && (
         <div onClick={() => setLightbox(null)} style={{
-          position: 'fixed', inset: 0, zIndex: 1000, backgroundColor: 'rgba(0,0,0,0.88)',
+          position: 'fixed', inset: 0, zIndex: 1000, backgroundColor: 'rgba(38,32,26,0.9)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>
           <img src={lightbox} alt="receta" style={{ maxWidth: '92%', maxHeight: '88vh', objectFit: 'contain', borderRadius: 10 }} />
