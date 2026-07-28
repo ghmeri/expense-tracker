@@ -52,24 +52,22 @@ export type DietTag = 'vegetariano' | 'con_carne';
 
 export type MealSlot = 'comida' | 'cena';
 
-export type Person = 'maria_f' | 'maria_n' | 'ambas' | null;
+export type RowType = 'compartido' | 'separado';
 
-export interface Dish {
-  text: string;
-  person: Person;
+export interface MenuRow {
+  id: string;
+  type: RowType;
+  shared: string;    // usado cuando type === 'compartido'
+  personF: string;   // usado cuando type === 'separado' (Maria F)
+  personN: string;   // usado cuando type === 'separado' (Maria N)
 }
-
-export type DaySlotDishes = {
-  vegetariano?: Dish;
-  con_carne?: Dish;
-};
 
 export type WeekDay = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
 
 export type WeeklyMenu = {
   [day in WeekDay]?: {
-    comida?: DaySlotDishes;
-    cena?: DaySlotDishes;
+    comida?: MenuRow[];
+    cena?: MenuRow[];
   };
 };
 

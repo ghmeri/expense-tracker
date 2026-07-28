@@ -48,5 +48,21 @@ export default async function handler(req: Request): Promise<Response> {
     return new Response(JSON.stringify(merged), { status: 200, headers: CORS });
   }
 
+  if (req.method === 'DELETE') {
+    let body: { code?: string; name?: string };
+    try { body = await req.json(); }
+    catch { return jsonError('JSON inválido', 400); }
+
+    if (!body.code || !CODE_RE.test(body.code)) return jsonError('Código de hogar inválido', 400);
+    if (!body.name) return jsonError('name inválido', 400);
+
+    const key = `household:${body.code}:purchases`;
+    const existing = (await redis.get<RecentPurchaseItem[]>(key)) ?? [];
+    const filtered = existing.filter(item => item.name !== body.name);
+
+    await redis.set(key, filtered);
+    return new Response(JSON.stringify(filtered), { status: 200, headers: CORS });
+  }
+
   return jsonError('Method not allowed', 405);
 }

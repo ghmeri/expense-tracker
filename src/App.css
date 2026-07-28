@@ -9,6 +9,22 @@ html, body, #root {
   overflow: hidden;
 }
 
+/* ── Menú semanal: calendario + barra lateral de compras/ideas ── */
+.menu-layout {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+.menu-layout > .menu-side {
+  flex: 1 1 240px;
+  min-width: 220px;
+}
+.menu-layout > .menu-main {
+  flex: 3 1 420px;
+  min-width: 280px;
+}
+
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   background: #f0f4f8;

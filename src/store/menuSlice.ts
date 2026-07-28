@@ -1,11 +1,12 @@
 import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { DietTag, Dish, MealSlot, MenuState, WeekDay, WeeklyMenu } from '../types';
+import { MealSlot, MenuRow, MenuState, WeekDay, WeeklyMenu } from '../types';
 import { HOUSEHOLD_CODE } from '../services/household';
 import {
   getWeekMenu,
   saveWeekMenu,
   getRecentPurchases as apiGetRecentPurchases,
   pushRecentPurchases as apiPushRecentPurchases,
+  removeRecentPurchase as apiRemoveRecentPurchase,
 } from '../services/sharedService';
 import { getMondayISO } from '../utils/date';
 
@@ -25,20 +26,17 @@ export const fetchWeekMenu = createAsyncThunk(
   }
 );
 
-export const saveMealSlot = createAsyncThunk(
-  'menu/saveMealSlot',
+export const saveMealSlotRows = createAsyncThunk(
+  'menu/saveMealSlotRows',
   async (
-    { weekStart, day, slot, category, dish }:
-    { weekStart: string; day: WeekDay; slot: MealSlot; category: DietTag; dish: Dish },
+    { weekStart, day, slot, rows }:
+    { weekStart: string; day: WeekDay; slot: MealSlot; rows: MenuRow[] },
     { getState }
   ) => {
     const state = getState() as { menu: MenuState };
     const updatedMenu: WeeklyMenu = {
       ...state.menu.weekMenu,
-      [day]: {
-        ...state.menu.weekMenu[day],
-        [slot]: { ...state.menu.weekMenu[day]?.[slot], [category]: dish },
-      },
+      [day]: { ...state.menu.weekMenu[day], [slot]: rows },
     };
     const doc = await saveWeekMenu(HOUSEHOLD_CODE, weekStart, updatedMenu);
     return doc.menu;
@@ -53,6 +51,11 @@ export const fetchRecentPurchases = createAsyncThunk(
 export const pushRecentPurchases = createAsyncThunk(
   'menu/pushRecentPurchases',
   async (names: string[]) => apiPushRecentPurchases(HOUSEHOLD_CODE, names)
+);
+
+export const removeRecentPurchase = createAsyncThunk(
+  'menu/removeRecentPurchase',
+  async (name: string) => apiRemoveRecentPurchase(HOUSEHOLD_CODE, name)
 );
 
 const menuSlice = createSlice({
@@ -75,13 +78,16 @@ const menuSlice = createSlice({
         state.loading = false;
         state.error = action.error.message ?? 'Error al cargar el menú';
       })
-      .addCase(saveMealSlot.fulfilled, (state, action) => {
+      .addCase(saveMealSlotRows.fulfilled, (state, action) => {
         state.weekMenu = action.payload;
       })
       .addCase(fetchRecentPurchases.fulfilled, (state, action) => {
         state.recentPurchases = action.payload;
       })
       .addCase(pushRecentPurchases.fulfilled, (state, action) => {
+        state.recentPurchases = action.payload;
+      })
+      .addCase(removeRecentPurchase.fulfilled, (state, action) => {
         state.recentPurchases = action.payload;
       });
   },

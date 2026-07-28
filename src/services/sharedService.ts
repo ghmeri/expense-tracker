@@ -39,3 +39,13 @@ export const pushRecentPurchases = async (code: string, names: string[]): Promis
   if (!res.ok) throw new Error('No se pudieron guardar las compras recientes');
   return res.json();
 };
+
+export const removeRecentPurchase = async (code: string, name: string): Promise<RecentPurchaseItem[]> => {
+  const res = await fetch('/api/household-purchases', {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code, name }),
+  });
+  if (!res.ok) throw new Error('No se pudo quitar la compra');
+  return res.json();
+};
