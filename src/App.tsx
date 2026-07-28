@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Provider } from 'react-redux';
 import { store } from './store';
+import ErrorBoundary from './components/ErrorBoundary';
 import HomeScreen from './screens/HomeScreen';
 import TicketsScreen from './screens/TicketsScreen';
 import AddExpenseScreen from './screens/AddExpenseScreen';
@@ -32,12 +33,14 @@ function AppContent() {
     }}>
       {/* Contenido */}
       <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-        {tab === 'home' && <HomeScreen onNavigate={setTab} />}
-        {tab === 'tickets' && <TicketsScreen />}
-        {tab === 'add' && <AddExpenseScreen onSave={() => setTab('tickets')} />}
-        {tab === 'summary' && <SummaryScreen />}
-        {tab === 'menu' && <MenuScreen />}
-        {tab === 'settings' && <SettingsScreen />}
+        <ErrorBoundary key={tab}>
+          {tab === 'home' && <HomeScreen onNavigate={setTab} />}
+          {tab === 'tickets' && <TicketsScreen />}
+          {tab === 'add' && <AddExpenseScreen onSave={() => setTab('tickets')} />}
+          {tab === 'summary' && <SummaryScreen />}
+          {tab === 'menu' && <MenuScreen />}
+          {tab === 'settings' && <SettingsScreen />}
+        </ErrorBoundary>
       </div>
 
       {/* Barra de navegación inferior */}

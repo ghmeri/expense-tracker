@@ -56,7 +56,15 @@ export default function MenuScreen() {
     dispatch(fetchRecentPurchases());
   }, [currentWeekStart]);
 
-  const getRows = (day: WeekDay, slot: MealSlot): MenuRow[] => weekMenu[day]?.[slot] ?? [];
+  // Blindaje: si el documento guardado viene de una versión anterior del
+  // esquema del menú (no era un array de filas), lo ignoramos en vez de
+  // romper el render — al primer cambio se sobrescribe con el formato actual.
+  const getRows = (day: WeekDay, slot: MealSlot): MenuRow[] => {
+    const raw = weekMenu[day]?.[slot];
+    if (!Array.isArray(raw)) return [];
+    return raw.filter((r): r is MenuRow =>
+      !!r && typeof r === 'object' && (r.type === 'compartido' || r.type === 'separado'));
+  };
 
   const saveRows = (day: WeekDay, slot: MealSlot, rows: MenuRow[]) => {
     dispatch(saveMealSlotRows({ weekStart: currentWeekStart, day, slot, rows }));
