@@ -16,6 +16,8 @@ export const COLORS = {
   card: '#fff',
   cardAlt: '#FFFCF6',
   danger: '#D8451C',
+  header: '#E3B778',
+  headerText: '#26201A',
 };
 
 export const FONT_HEAD = "'Space Grotesk', sans-serif";

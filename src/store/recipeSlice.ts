@@ -9,9 +9,23 @@ const initialState: RecipeState = {
   error: null,
 };
 
+const normalizeRecipe = (r: Partial<Recipe> & { id: string; name: string }): Recipe => ({
+  id: r.id,
+  name: r.name,
+  dietTag: r.dietTag ?? 'vegetariano',
+  rating: r.rating ?? 0,
+  notes: r.notes ?? '',
+  ingredients: Array.isArray(r.ingredients) ? r.ingredients : [],
+  time: r.time ?? '',
+  photoUri: r.photoUri,
+});
+
 export const fetchRecipes = createAsyncThunk(
   'recipes/fetchRecipes',
-  async () => getRecipes(HOUSEHOLD_CODE)
+  async () => {
+    const recipes = await getRecipes(HOUSEHOLD_CODE);
+    return Array.isArray(recipes) ? recipes.map(normalizeRecipe) : [];
+  }
 );
 
 export const persistRecipes = createAsyncThunk(

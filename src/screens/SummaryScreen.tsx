@@ -85,13 +85,13 @@ export default function SummaryScreen() {
 
       {/* Total */}
       <div style={{
-        backgroundColor: COLORS.ink,
+        backgroundColor: COLORS.header,
         border: border(2.5), borderRadius: 18, padding: '28px 24px', textAlign: 'center', marginBottom: 20,
         boxShadow: shadow(4),
       }}>
-        <div style={{ color: 'rgba(251,239,221,0.75)', fontSize: 13 }}>Total</div>
-        <div style={{ color: COLORS.yellow, fontFamily: FONT_HEAD, fontSize: 40, fontWeight: 700, marginTop: 4 }}>{total.toFixed(2)} €</div>
-        <div style={{ color: 'rgba(251,239,221,0.6)', fontSize: 13, marginTop: 4 }}>
+        <div style={{ color: 'rgba(38,32,26,0.65)', fontSize: 13 }}>Total</div>
+        <div style={{ color: COLORS.headerText, fontFamily: FONT_HEAD, fontSize: 40, fontWeight: 700, marginTop: 4 }}>{total.toFixed(2)} €</div>
+        <div style={{ color: 'rgba(38,32,26,0.65)', fontSize: 13, marginTop: 4 }}>
           {filtered.length} {filtered.length === 1 ? 'gasto' : 'gastos'}
         </div>
       </div>

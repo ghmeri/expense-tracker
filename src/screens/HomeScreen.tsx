@@ -30,17 +30,17 @@ export default function HomeScreen({ onNavigate }: Props) {
 
   return (
     <div style={{ overflowY: 'auto', height: '100%', backgroundColor: COLORS.bg }}>
-      <div style={{ backgroundColor: COLORS.ink, padding: '28px 24px 40px' }}>
-        <div style={{ color: 'rgba(255,211,92,0.7)', fontSize: 13, fontWeight: 600 }}>Este mes has gastado</div>
-        <div style={{ color: COLORS.yellow, fontFamily: FONT_HEAD, fontSize: 38, fontWeight: 700, lineHeight: 1.1 }}>
+      <div style={{ backgroundColor: COLORS.header, borderBottom: border(2.5), padding: '28px 24px 40px' }}>
+        <div style={{ color: 'rgba(38,32,26,0.65)', fontSize: 13, fontWeight: 600 }}>Este mes has gastado</div>
+        <div style={{ color: COLORS.headerText, fontFamily: FONT_HEAD, fontSize: 38, fontWeight: 700, lineHeight: 1.1 }}>
           {thisMonthTotal.toFixed(2)} €
         </div>
-        <div style={{ color: 'rgba(251,239,221,0.7)', fontSize: 13, marginTop: 4 }}>
+        <div style={{ color: 'rgba(38,32,26,0.65)', fontSize: 13, marginTop: 4 }}>
           {expenses.length} {expenses.length === 1 ? 'gasto' : 'gastos'} en total
         </div>
       </div>
 
-      <div style={{ padding: '20px 24px 40px', marginTop: -20 }}>
+      <div style={{ padding: '20px 24px 40px', marginTop: 4 }}>
         {SECTIONS.map(s => (
           <button
             key={s.id}

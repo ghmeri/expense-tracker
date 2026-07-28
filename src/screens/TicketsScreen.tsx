@@ -46,15 +46,15 @@ export default function TicketsScreen() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', backgroundColor: COLORS.bg }}>
       {/* Cabecera */}
-      <div style={{ backgroundColor: COLORS.ink, padding: '20px 20px 16px' }}>
+      <div style={{ backgroundColor: COLORS.header, borderBottom: border(2.5), padding: '20px 20px 16px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div>
-            <div style={{ color: 'rgba(251,239,221,0.7)', fontSize: 13 }}>Total gastado</div>
-            <div style={{ color: COLORS.yellow, fontFamily: FONT_HEAD, fontSize: 32, fontWeight: 700, lineHeight: 1.1 }}>
+            <div style={{ color: 'rgba(38,32,26,0.65)', fontSize: 13 }}>Total gastado</div>
+            <div style={{ color: COLORS.headerText, fontFamily: FONT_HEAD, fontSize: 32, fontWeight: 700, lineHeight: 1.1 }}>
               {total.toFixed(2)} €
             </div>
             {filtered.length !== expenses.length && (
-              <div style={{ color: 'rgba(251,239,221,0.6)', fontSize: 12, marginTop: 4 }}>
+              <div style={{ color: 'rgba(38,32,26,0.6)', fontSize: 12, marginTop: 4 }}>
                 {filtered.length} de {expenses.length} gastos
               </div>
             )}
