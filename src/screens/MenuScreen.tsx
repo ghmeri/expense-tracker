@@ -17,9 +17,9 @@ const COMPARTIDO = { bg: '#eff6ff', border: '#bfdbfe', text: '#1d4ed8' };
 const MARIA_F = { bg: '#f0fdf4', border: '#bbf7d0', text: '#15803d' };
 const MARIA_N = { bg: '#fef2f2', border: '#fecaca', text: '#b91c1c' };
 
-const SLOTS: { id: MealSlot; label: string; icon: string }[] = [
-  { id: 'comida', label: 'Comida', icon: '🍲' },
-  { id: 'cena', label: 'Cena', icon: '🌙' },
+const SLOTS: { id: MealSlot; label: string; icon: string; solid: string; bg: string }[] = [
+  { id: 'comida', label: 'Comida', icon: '🍲', solid: '#f59e0b', bg: '#fffbeb' },
+  { id: 'cena', label: 'Cena', icon: '🌙', solid: '#6366f1', bg: '#f5f3ff' },
 ];
 
 const card = (children: React.ReactNode, extra?: React.CSSProperties) => (
@@ -34,13 +34,6 @@ const card = (children: React.ReactNode, extra?: React.CSSProperties) => (
 const newRow = (type: RowType): MenuRow => ({
   id: crypto.randomUUID(), type, shared: '', personF: '', personN: '',
 });
-
-/** Plantilla por defecto: comida = 1er plato compartido + 2º plato separado; cena = 1 plato separado. */
-const defaultRows = (slot: MealSlot): MenuRow[] =>
-  slot === 'comida'
-    ? [{ id: 'default-shared', type: 'compartido', shared: '', personF: '', personN: '' },
-       { id: 'default-separado', type: 'separado', shared: '', personF: '', personN: '' }]
-    : [{ id: 'default-separado', type: 'separado', shared: '', personF: '', personN: '' }];
 
 type Field = 'shared' | 'personF' | 'personN';
 
@@ -63,10 +56,7 @@ export default function MenuScreen() {
     dispatch(fetchRecentPurchases());
   }, [currentWeekStart]);
 
-  const getRows = (day: WeekDay, slot: MealSlot): MenuRow[] => {
-    const rows = weekMenu[day]?.[slot];
-    return rows && rows.length > 0 ? rows : defaultRows(slot);
-  };
+  const getRows = (day: WeekDay, slot: MealSlot): MenuRow[] => weekMenu[day]?.[slot] ?? [];
 
   const saveRows = (day: WeekDay, slot: MealSlot, rows: MenuRow[]) => {
     dispatch(saveMealSlotRows({ weekStart: currentWeekStart, day, slot, rows }));
@@ -237,86 +227,100 @@ export default function MenuScreen() {
                   {SLOTS.map((slot, si) => {
                     const rows = getRows(key, slot.id);
                     return (
-                      <div key={slot.id} style={{ marginBottom: si === 0 ? 18 : 0 }}>
-                        <div style={{ fontSize: 12, fontWeight: 700, color: '#64748b', marginBottom: 6 }}>
-                          {slot.icon} {slot.label}
+                      <div key={slot.id} style={{
+                        display: 'flex', alignItems: 'stretch', marginBottom: si === 0 ? 12 : 0,
+                        borderRadius: 12, overflow: 'hidden', border: '1px solid #e2e8f0',
+                      }}>
+                        {/* Etiqueta lateral */}
+                        <div style={{
+                          width: 30, flexShrink: 0, backgroundColor: slot.solid,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        }}>
+                          <span style={{
+                            display: 'inline-block', transform: 'rotate(-90deg)', whiteSpace: 'nowrap',
+                            fontSize: 11, fontWeight: 800, color: '#fff', letterSpacing: 1, textTransform: 'uppercase',
+                          }}>
+                            {slot.icon} {slot.label}
+                          </span>
                         </div>
 
-                        {rows.map(row => (
-                          <div key={row.id} style={{
-                            display: 'flex', alignItems: 'stretch', gap: 0, marginBottom: 8,
-                            borderRadius: 12, overflow: 'hidden', border: '1px solid #e2e8f0',
-                          }}>
-                            {row.type === 'compartido' ? (
-                              <input
-                                value={row.shared}
-                                placeholder="Plato compartido…"
-                                onFocus={() => setSelectedCell({ day: key, slot: slot.id, rowId: row.id, field: 'shared' })}
-                                onChange={e => updateField(key, slot.id, row.id, 'shared', e.target.value)}
+                        <div style={{ flex: 1, backgroundColor: slot.bg, padding: '10px 12px' }}>
+                          {rows.map(row => (
+                            <div key={row.id} style={{
+                              display: 'flex', alignItems: 'stretch', gap: 0, marginBottom: 8,
+                              borderRadius: 10, overflow: 'hidden', border: '1px solid #e2e8f0',
+                            }}>
+                              {row.type === 'compartido' ? (
+                                <input
+                                  value={row.shared}
+                                  placeholder="Plato compartido…"
+                                  onFocus={() => setSelectedCell({ day: key, slot: slot.id, rowId: row.id, field: 'shared' })}
+                                  onChange={e => updateField(key, slot.id, row.id, 'shared', e.target.value)}
+                                  style={{
+                                    flex: 1, border: 'none', outline: isFieldSelected(key, slot.id, row.id, 'shared') ? `2px solid ${BLUE}` : 'none',
+                                    fontSize: 13, fontWeight: 600, color: COMPARTIDO.text, padding: '10px 12px',
+                                    backgroundColor: COMPARTIDO.bg,
+                                  }}
+                                />
+                              ) : (
+                                <>
+                                  <div style={{ flex: 1, backgroundColor: MARIA_F.bg, borderRight: `1px solid ${MARIA_F.border}` }}>
+                                    <div style={{ fontSize: 10, fontWeight: 700, color: MARIA_F.text, padding: '4px 12px 0' }}>MARIA F</div>
+                                    <input
+                                      value={row.personF}
+                                      placeholder="Su plato…"
+                                      onFocus={() => setSelectedCell({ day: key, slot: slot.id, rowId: row.id, field: 'personF' })}
+                                      onChange={e => updateField(key, slot.id, row.id, 'personF', e.target.value)}
+                                      style={{
+                                        width: '100%', border: 'none', outline: isFieldSelected(key, slot.id, row.id, 'personF') ? `2px solid ${BLUE}` : 'none',
+                                        fontSize: 13, fontWeight: 600, color: MARIA_F.text, padding: '2px 12px 8px',
+                                        backgroundColor: 'transparent',
+                                      }}
+                                    />
+                                  </div>
+                                  <div style={{ flex: 1, backgroundColor: MARIA_N.bg }}>
+                                    <div style={{ fontSize: 10, fontWeight: 700, color: MARIA_N.text, padding: '4px 12px 0' }}>MARIA N</div>
+                                    <input
+                                      value={row.personN}
+                                      placeholder="Su plato…"
+                                      onFocus={() => setSelectedCell({ day: key, slot: slot.id, rowId: row.id, field: 'personN' })}
+                                      onChange={e => updateField(key, slot.id, row.id, 'personN', e.target.value)}
+                                      style={{
+                                        width: '100%', border: 'none', outline: isFieldSelected(key, slot.id, row.id, 'personN') ? `2px solid ${BLUE}` : 'none',
+                                        fontSize: 13, fontWeight: 600, color: MARIA_N.text, padding: '2px 12px 8px',
+                                        backgroundColor: 'transparent',
+                                      }}
+                                    />
+                                  </div>
+                                </>
+                              )}
+                              <button
+                                onClick={() => removeRow(key, slot.id, row.id)}
+                                title="Quitar fila"
                                 style={{
-                                  flex: 1, border: 'none', outline: isFieldSelected(key, slot.id, row.id, 'shared') ? `2px solid ${BLUE}` : 'none',
-                                  fontSize: 13, fontWeight: 600, color: COMPARTIDO.text, padding: '10px 12px',
-                                  backgroundColor: COMPARTIDO.bg,
+                                  width: 28, flexShrink: 0, border: 'none', borderLeft: '1px solid rgba(0,0,0,0.06)',
+                                  backgroundColor: '#fff', color: '#cbd5e1', fontSize: 14, cursor: 'pointer',
                                 }}
-                              />
-                            ) : (
-                              <>
-                                <div style={{ flex: 1, backgroundColor: MARIA_F.bg, borderRight: `1px solid ${MARIA_F.border}` }}>
-                                  <div style={{ fontSize: 10, fontWeight: 700, color: MARIA_F.text, padding: '4px 12px 0' }}>MARIA F</div>
-                                  <input
-                                    value={row.personF}
-                                    placeholder="Su plato…"
-                                    onFocus={() => setSelectedCell({ day: key, slot: slot.id, rowId: row.id, field: 'personF' })}
-                                    onChange={e => updateField(key, slot.id, row.id, 'personF', e.target.value)}
-                                    style={{
-                                      width: '100%', border: 'none', outline: isFieldSelected(key, slot.id, row.id, 'personF') ? `2px solid ${BLUE}` : 'none',
-                                      fontSize: 13, fontWeight: 600, color: MARIA_F.text, padding: '2px 12px 8px',
-                                      backgroundColor: 'transparent',
-                                    }}
-                                  />
-                                </div>
-                                <div style={{ flex: 1, backgroundColor: MARIA_N.bg }}>
-                                  <div style={{ fontSize: 10, fontWeight: 700, color: MARIA_N.text, padding: '4px 12px 0' }}>MARIA N</div>
-                                  <input
-                                    value={row.personN}
-                                    placeholder="Su plato…"
-                                    onFocus={() => setSelectedCell({ day: key, slot: slot.id, rowId: row.id, field: 'personN' })}
-                                    onChange={e => updateField(key, slot.id, row.id, 'personN', e.target.value)}
-                                    style={{
-                                      width: '100%', border: 'none', outline: isFieldSelected(key, slot.id, row.id, 'personN') ? `2px solid ${BLUE}` : 'none',
-                                      fontSize: 13, fontWeight: 600, color: MARIA_N.text, padding: '2px 12px 8px',
-                                      backgroundColor: 'transparent',
-                                    }}
-                                  />
-                                </div>
-                              </>
-                            )}
-                            <button
-                              onClick={() => removeRow(key, slot.id, row.id)}
-                              title="Quitar fila"
-                              style={{
-                                width: 28, flexShrink: 0, border: 'none', borderLeft: '1px solid rgba(0,0,0,0.06)',
-                                backgroundColor: '#fff', color: '#cbd5e1', fontSize: 14, cursor: 'pointer',
-                              }}
-                            >
-                              ×
+                              >
+                                ×
+                              </button>
+                            </div>
+                          ))}
+
+                          <div style={{ display: 'flex', gap: 6, marginTop: rows.length > 0 ? 4 : 0 }}>
+                            <button onClick={() => addRow(key, slot.id, 'compartido')} style={{
+                              flex: 1, padding: '6px 8px', borderRadius: 8, border: '1.5px dashed #cbd5e1',
+                              backgroundColor: '#fff', color: '#64748b', fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                            }}>
+                              + Plato compartido
+                            </button>
+                            <button onClick={() => addRow(key, slot.id, 'separado')} style={{
+                              flex: 1, padding: '6px 8px', borderRadius: 8, border: '1.5px dashed #cbd5e1',
+                              backgroundColor: '#fff', color: '#64748b', fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                            }}>
+                              + Plato para cada una
                             </button>
                           </div>
-                        ))}
-
-                        <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
-                          <button onClick={() => addRow(key, slot.id, 'compartido')} style={{
-                            flex: 1, padding: '6px 8px', borderRadius: 8, border: '1.5px dashed #cbd5e1',
-                            backgroundColor: '#fff', color: '#64748b', fontSize: 11, fontWeight: 600, cursor: 'pointer',
-                          }}>
-                            + Plato compartido
-                          </button>
-                          <button onClick={() => addRow(key, slot.id, 'separado')} style={{
-                            flex: 1, padding: '6px 8px', borderRadius: 8, border: '1.5px dashed #cbd5e1',
-                            backgroundColor: '#fff', color: '#64748b', fontSize: 11, fontWeight: 600, cursor: 'pointer',
-                          }}>
-                            + Plato para cada una
-                          </button>
                         </div>
                       </div>
                     );
