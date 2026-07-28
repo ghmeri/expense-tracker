@@ -7,6 +7,9 @@ import {
   getRecentPurchases as apiGetRecentPurchases,
   pushRecentPurchases as apiPushRecentPurchases,
   removeRecentPurchase as apiRemoveRecentPurchase,
+  getCustomIdeas as apiGetCustomIdeas,
+  pushCustomIdea as apiPushCustomIdea,
+  removeCustomIdea as apiRemoveCustomIdea,
 } from '../services/sharedService';
 import { getMondayISO } from '../utils/date';
 
@@ -14,6 +17,7 @@ const initialState: MenuState = {
   currentWeekStart: getMondayISO(new Date()),
   weekMenu: {},
   recentPurchases: [],
+  customIdeas: [],
   loading: false,
   error: null,
 };
@@ -58,6 +62,21 @@ export const removeRecentPurchase = createAsyncThunk(
   async (name: string) => apiRemoveRecentPurchase(HOUSEHOLD_CODE, name)
 );
 
+export const fetchCustomIdeas = createAsyncThunk(
+  'menu/fetchCustomIdeas',
+  async () => apiGetCustomIdeas(HOUSEHOLD_CODE)
+);
+
+export const pushCustomIdea = createAsyncThunk(
+  'menu/pushCustomIdea',
+  async (name: string) => apiPushCustomIdea(HOUSEHOLD_CODE, name)
+);
+
+export const removeCustomIdea = createAsyncThunk(
+  'menu/removeCustomIdea',
+  async (name: string) => apiRemoveCustomIdea(HOUSEHOLD_CODE, name)
+);
+
 const menuSlice = createSlice({
   name: 'menu',
   initialState,
@@ -79,6 +98,8 @@ const menuSlice = createSlice({
         state.error = action.error.message ?? 'Error al cargar el menú';
       })
       .addCase(saveMealSlotRows.fulfilled, (state, action) => {
+        // Si mientras tanto cambiaste de semana, ignora esta respuesta desfasada.
+        if (state.currentWeekStart !== action.meta.arg.weekStart) return;
         state.weekMenu = action.payload;
       })
       .addCase(fetchRecentPurchases.fulfilled, (state, action) => {
@@ -89,6 +110,15 @@ const menuSlice = createSlice({
       })
       .addCase(removeRecentPurchase.fulfilled, (state, action) => {
         state.recentPurchases = action.payload;
+      })
+      .addCase(fetchCustomIdeas.fulfilled, (state, action) => {
+        state.customIdeas = action.payload;
+      })
+      .addCase(pushCustomIdea.fulfilled, (state, action) => {
+        state.customIdeas = action.payload;
+      })
+      .addCase(removeCustomIdea.fulfilled, (state, action) => {
+        state.customIdeas = action.payload;
       });
   },
 });

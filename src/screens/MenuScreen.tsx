@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../store';
 import {
-  fetchWeekMenu, saveMealSlotRows, fetchRecentPurchases, removeRecentPurchase, setCurrentWeekStart,
+  fetchWeekMenu, saveMealSlotRows, fetchRecentPurchases, removeRecentPurchase,
+  fetchCustomIdeas, pushCustomIdea, removeCustomIdea, setCurrentWeekStart,
 } from '../store/menuSlice';
 import { DietTag, MealSlot, MenuRow, RowType, WeekDay } from '../types';
 import { HOUSEHOLD_CODE } from '../services/household';
@@ -11,6 +12,7 @@ import { WEEK_DAYS, addWeeksISO, formatWeekRange, getMondayISO, getDayDateLabel,
 import { MEAL_IDEAS } from '../data/mealIdeas';
 
 const BLUE = '#2563eb';
+const SAVE_DELAY = 500;
 
 // Colores: comida compartida = azul, Maria F = verde, Maria N = rojo
 const COMPARTIDO = { bg: '#eff6ff', border: '#bfdbfe', text: '#1d4ed8' };
@@ -22,14 +24,69 @@ const SLOTS: { id: MealSlot; label: string; icon: string; solid: string; bg: str
   { id: 'cena', label: 'Cena', icon: '🌙', solid: '#6366f1', bg: '#f5f3ff' },
 ];
 
-const card = (children: React.ReactNode, extra?: React.CSSProperties) => (
-  <div style={{
-    backgroundColor: '#fff', borderRadius: 16, padding: '18px 20px',
-    boxShadow: '0 1px 8px rgba(0,0,0,0.06)', marginBottom: 16, ...extra,
-  }}>
-    {children}
-  </div>
-);
+const cardStyle: React.CSSProperties = {
+  backgroundColor: '#fff', borderRadius: 16, boxShadow: '0 1px 8px rgba(0,0,0,0.06)', marginBottom: 16, overflow: 'hidden',
+};
+
+/** Panel lateral colapsable */
+function Panel({ title, children, defaultOpen = true }: { title: string; children: React.ReactNode; defaultOpen?: boolean }) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div style={cardStyle}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{
+          width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '14px 18px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left',
+        }}
+      >
+        <span style={{ fontSize: 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>{title}</span>
+        <span style={{ fontSize: 12, color: '#94a3b8', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>▾</span>
+      </button>
+      {open && <div style={{ padding: '0 18px 18px' }}>{children}</div>}
+    </div>
+  );
+}
+
+/** Textarea que crece con el contenido y hace wrap del texto (mejor lectura en tablet) */
+function AutoTextarea(props: {
+  value: string; placeholder: string; style: React.CSSProperties;
+  onFocus: () => void; onChange: (value: string) => void;
+  onDrop: (name: string) => void;
+}) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+
+  const resize = (el: HTMLTextAreaElement | null) => {
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
+  };
+
+  useEffect(() => { resize(ref.current); }, [props.value]);
+
+  return (
+    <textarea
+      ref={ref}
+      rows={1}
+      value={props.value}
+      placeholder={props.placeholder}
+      onFocus={props.onFocus}
+      onChange={e => props.onChange(e.target.value)}
+      onDragOver={e => e.preventDefault()}
+      onDrop={e => {
+        e.preventDefault();
+        e.stopPropagation();
+        const name = e.dataTransfer.getData('text/plain');
+        if (name) props.onDrop(name);
+      }}
+      style={{
+        width: '100%', border: 'none', outline: 'none', resize: 'none', overflow: 'hidden',
+        whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'inherit', lineHeight: 1.35,
+        ...props.style,
+      }}
+    />
+  );
+}
 
 const newRow = (type: RowType): MenuRow => ({
   id: crypto.randomUUID(), type, shared: '', personF: '', personN: '',
@@ -39,13 +96,22 @@ type Field = 'shared' | 'personF' | 'personN';
 
 interface SelectedCell { day: WeekDay; slot: MealSlot; rowId: string; field: Field; }
 
+const fieldKey = (day: WeekDay, slot: MealSlot, rowId: string, field: Field) => `${day}|${slot}|${rowId}|${field}`;
+
 export default function MenuScreen() {
   const dispatch = useDispatch<AppDispatch>();
-  const { currentWeekStart, weekMenu, recentPurchases, loading } =
+  const { currentWeekStart, weekMenu, recentPurchases, customIdeas, loading } =
     useSelector((state: RootState) => state.menu);
 
   const [dietFilter, setDietFilter] = useState<DietTag | null>(null);
   const [selectedCell, setSelectedCell] = useState<SelectedCell | null>(null);
+
+  // Buffer local de edición: evita que las respuestas del servidor (que
+  // llegan con retraso) pisen lo que estás escribiendo ahora mismo — antes,
+  // al escribir rápido, cada tecla disparaba un guardado y una respuesta
+  // desactualizada podía "comerse" letras o dejar el texto revuelto.
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
   useEffect(() => {
     registerHousehold(HOUSEHOLD_CODE);
@@ -54,6 +120,7 @@ export default function MenuScreen() {
   useEffect(() => {
     dispatch(fetchWeekMenu(currentWeekStart));
     dispatch(fetchRecentPurchases());
+    dispatch(fetchCustomIdeas());
   }, [currentWeekStart]);
 
   // Blindaje: si el documento guardado viene de una versión anterior del
@@ -70,13 +137,49 @@ export default function MenuScreen() {
     dispatch(saveMealSlotRows({ weekStart: currentWeekStart, day, slot, rows }));
   };
 
-  const updateField = (day: WeekDay, slot: MealSlot, rowId: string, field: Field, value: string) => {
+  const getFieldValue = (day: WeekDay, slot: MealSlot, row: MenuRow, field: Field): string => {
+    const key = fieldKey(day, slot, row.id, field);
+    return key in drafts ? drafts[key] : row[field];
+  };
+
+  /** Escritura: actualiza al instante en pantalla y guarda tras una pausa breve. */
+  const handleFieldChange = (day: WeekDay, slot: MealSlot, rowId: string, field: Field, value: string) => {
+    const key = fieldKey(day, slot, rowId, field);
+    setDrafts(prev => ({ ...prev, [key]: value }));
+
+    clearTimeout(timers.current[key]);
+    timers.current[key] = setTimeout(async () => {
+      const rows = getRows(day, slot).map(r => r.id === rowId ? { ...r, [field]: value } : r);
+      await dispatch(saveMealSlotRows({ weekStart: currentWeekStart, day, slot, rows }));
+      // Solo limpiamos el borrador si nadie ha seguido escribiendo mientras tanto.
+      setDrafts(prev => {
+        if (prev[key] !== value) return prev;
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+      if (value.trim()) dispatch(pushCustomIdea(value.trim()));
+    }, SAVE_DELAY);
+  };
+
+  /** Cambio inmediato (arrastrar, botones, quitar fila): sin debounce. */
+  const setFieldNow = (day: WeekDay, slot: MealSlot, rowId: string, field: Field, value: string) => {
+    const key = fieldKey(day, slot, rowId, field);
+    setDrafts(prev => { const next = { ...prev }; delete next[key]; return next; });
     const rows = getRows(day, slot).map(r => r.id === rowId ? { ...r, [field]: value } : r);
     saveRows(day, slot, rows);
+    if (value.trim()) dispatch(pushCustomIdea(value.trim()));
   };
 
   const addRow = (day: WeekDay, slot: MealSlot, type: RowType) => {
     saveRows(day, slot, [...getRows(day, slot), newRow(type)]);
+  };
+
+  const addRowWithDish = (day: WeekDay, slot: MealSlot, name: string) => {
+    const row = newRow('compartido');
+    row.shared = name;
+    saveRows(day, slot, [...getRows(day, slot), row]);
+    dispatch(pushCustomIdea(name));
   };
 
   const removeRow = (day: WeekDay, slot: MealSlot, rowId: string) => {
@@ -85,7 +188,7 @@ export default function MenuScreen() {
 
   const applyIdea = (name: string) => {
     if (!selectedCell) return;
-    updateField(selectedCell.day, selectedCell.slot, selectedCell.rowId, selectedCell.field, name);
+    setFieldNow(selectedCell.day, selectedCell.slot, selectedCell.rowId, selectedCell.field, name);
   };
 
   const filteredIdeas = dietFilter ? MEAL_IDEAS.filter(i => i.dietTag === dietFilter) : MEAL_IDEAS;
@@ -93,33 +196,106 @@ export default function MenuScreen() {
   const isFieldSelected = (day: WeekDay, slot: MealSlot, rowId: string, field: Field) =>
     selectedCell?.day === day && selectedCell.slot === slot && selectedCell.rowId === rowId && selectedCell.field === field;
 
+  const draggableIdea = (name: string) => ({
+    draggable: true,
+    onDragStart: (e: React.DragEvent) => e.dataTransfer.setData('text/plain', name),
+  });
+
   return (
     <div style={{ overflowY: 'auto', height: '100%', padding: '20px 20px 40px', backgroundColor: '#f0f4f8' }}>
       <div className="menu-layout">
 
-        {/* Barra lateral: compras recientes + ideas */}
+        {/* Barra lateral: compras recientes + ideas (colapsables) */}
         <div className="menu-side">
-          {card(
-            <div>
-              <div style={{ fontSize: 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: 10 }}>
-                🛒 Compras recientes
+          <Panel title="🛒 Compras recientes">
+            {recentPurchases.length === 0 ? (
+              <div style={{ fontSize: 13, color: '#94a3b8' }}>
+                Cuando escaneéis un ticket, los productos aparecerán aquí como inspiración.
               </div>
-              {recentPurchases.length === 0 ? (
-                <div style={{ fontSize: 13, color: '#94a3b8' }}>
-                  Cuando escaneéis un ticket, los productos aparecerán aquí como inspiración.
+            ) : (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {recentPurchases.map(item => (
+                  <span key={item.name} style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 6,
+                    padding: '6px 6px 6px 12px', borderRadius: 20, backgroundColor: '#f0f4f8',
+                    color: '#334155', fontSize: 13, fontWeight: 500, textTransform: 'capitalize',
+                  }}>
+                    {item.name}
+                    <button
+                      onClick={() => dispatch(removeRecentPurchase(item.name))}
+                      title="Quitar de la lista"
+                      style={{
+                        width: 18, height: 18, borderRadius: '50%', border: 'none',
+                        backgroundColor: '#e2e8f0', color: '#64748b', fontSize: 11,
+                        lineHeight: '18px', cursor: 'pointer', flexShrink: 0,
+                      }}
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+          </Panel>
+
+          <Panel title="💡 Ideas">
+            <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 10 }}>
+              Arrastra una idea al menú, o toca un plato y luego una idea para rellenarlo.
+            </div>
+            <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
+              {([null, 'vegetariano', 'con_carne'] as const).map(tag => (
+                <button
+                  key={String(tag)}
+                  onClick={() => setDietFilter(tag)}
+                  style={{
+                    padding: '4px 9px', borderRadius: 8, fontSize: 11, cursor: 'pointer',
+                    border: `1.5px solid ${dietFilter === tag ? BLUE : '#e2e8f0'}`,
+                    backgroundColor: dietFilter === tag ? '#eff6ff' : '#fff',
+                    color: dietFilter === tag ? BLUE : '#94a3b8', fontWeight: 600,
+                  }}
+                >
+                  {tag === null ? 'Todas' : tag === 'vegetariano' ? '🥦' : '🍖'}
+                </button>
+              ))}
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: customIdeas.length > 0 ? 14 : 0 }}>
+              {filteredIdeas.map(idea => (
+                <button
+                  key={idea.id}
+                  {...draggableIdea(idea.name)}
+                  onClick={() => applyIdea(idea.name)}
+                  disabled={!selectedCell}
+                  style={{
+                    padding: '7px 12px', borderRadius: 20, border: '1.5px solid #e2e8f0',
+                    backgroundColor: '#fff', color: '#334155', fontSize: 13, fontWeight: 500,
+                    cursor: 'grab', opacity: selectedCell ? 1 : 0.85,
+                  }}
+                >
+                  {idea.dietTag === 'vegetariano' ? '🥦' : '🍖'} {idea.name}
+                </button>
+              ))}
+            </div>
+            {customIdeas.length > 0 && (
+              <>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', marginBottom: 8 }}>
+                  🧑‍🍳 Vuestras recetas
                 </div>
-              ) : (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                  {recentPurchases.map(item => (
-                    <span key={item.name} style={{
-                      display: 'inline-flex', alignItems: 'center', gap: 6,
-                      padding: '6px 6px 6px 12px', borderRadius: 20, backgroundColor: '#f0f4f8',
-                      color: '#334155', fontSize: 13, fontWeight: 500, textTransform: 'capitalize',
-                    }}>
-                      {item.name}
+                  {customIdeas.map(idea => (
+                    <span
+                      key={idea.name}
+                      {...draggableIdea(idea.name)}
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'grab',
+                        padding: '6px 6px 6px 12px', borderRadius: 20, border: '1.5px solid #e2e8f0',
+                        backgroundColor: '#fff', color: '#334155', fontSize: 13, fontWeight: 500,
+                      }}
+                      onClick={() => applyIdea(idea.name)}
+                    >
+                      {idea.name}
                       <button
-                        onClick={() => dispatch(removeRecentPurchase(item.name))}
-                        title="Quitar de la lista"
+                        onClick={e => { e.stopPropagation(); dispatch(removeCustomIdea(idea.name)); }}
+                        title="Quitar idea"
                         style={{
                           width: 18, height: 18, borderRadius: '50%', border: 'none',
                           backgroundColor: '#e2e8f0', color: '#64748b', fontSize: 11,
@@ -131,56 +307,9 @@ export default function MenuScreen() {
                     </span>
                   ))}
                 </div>
-              )}
-            </div>
-          )}
-
-          {card(
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
-                  💡 Ideas
-                </div>
-                <div style={{ display: 'flex', gap: 6 }}>
-                  {([null, 'vegetariano', 'con_carne'] as const).map(tag => (
-                    <button
-                      key={String(tag)}
-                      onClick={() => setDietFilter(tag)}
-                      style={{
-                        padding: '4px 9px', borderRadius: 8, fontSize: 11, cursor: 'pointer',
-                        border: `1.5px solid ${dietFilter === tag ? BLUE : '#e2e8f0'}`,
-                        backgroundColor: dietFilter === tag ? '#eff6ff' : '#fff',
-                        color: dietFilter === tag ? BLUE : '#94a3b8', fontWeight: 600,
-                      }}
-                    >
-                      {tag === null ? 'Todas' : tag === 'vegetariano' ? '🥦' : '🍖'}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              {!selectedCell && (
-                <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 8 }}>
-                  Toca un plato del calendario y luego una idea para rellenarlo.
-                </div>
-              )}
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                {filteredIdeas.map(idea => (
-                  <button
-                    key={idea.id}
-                    onClick={() => applyIdea(idea.name)}
-                    disabled={!selectedCell}
-                    style={{
-                      padding: '7px 12px', borderRadius: 20, border: '1.5px solid #e2e8f0',
-                      backgroundColor: '#fff', color: '#334155', fontSize: 13, fontWeight: 500,
-                      cursor: selectedCell ? 'pointer' : 'not-allowed', opacity: selectedCell ? 1 : 0.5,
-                    }}
-                  >
-                    {idea.dietTag === 'vegetariano' ? '🥦' : '🍖'} {idea.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
+              </>
+            )}
+          </Panel>
         </div>
 
         {/* Calendario semanal */}
@@ -252,20 +381,30 @@ export default function MenuScreen() {
                           </span>
                         </div>
 
-                        <div style={{ flex: 1, backgroundColor: slot.bg, padding: '10px 12px' }}>
+                        <div
+                          style={{ flex: 1, backgroundColor: slot.bg, padding: '10px 12px' }}
+                          onDragOver={e => rows.length === 0 && e.preventDefault()}
+                          onDrop={e => {
+                            if (rows.length > 0) return;
+                            e.preventDefault();
+                            const name = e.dataTransfer.getData('text/plain');
+                            if (name) addRowWithDish(key, slot.id, name);
+                          }}
+                        >
                           {rows.map(row => (
                             <div key={row.id} style={{
                               display: 'flex', alignItems: 'stretch', gap: 0, marginBottom: 8,
                               borderRadius: 10, overflow: 'hidden', border: '1px solid #e2e8f0',
                             }}>
                               {row.type === 'compartido' ? (
-                                <input
-                                  value={row.shared}
+                                <AutoTextarea
+                                  value={getFieldValue(key, slot.id, row, 'shared')}
                                   placeholder="Plato compartido…"
                                   onFocus={() => setSelectedCell({ day: key, slot: slot.id, rowId: row.id, field: 'shared' })}
-                                  onChange={e => updateField(key, slot.id, row.id, 'shared', e.target.value)}
+                                  onChange={v => handleFieldChange(key, slot.id, row.id, 'shared', v)}
+                                  onDrop={name => setFieldNow(key, slot.id, row.id, 'shared', name)}
                                   style={{
-                                    flex: 1, border: 'none', outline: isFieldSelected(key, slot.id, row.id, 'shared') ? `2px solid ${BLUE}` : 'none',
+                                    flex: 1, outline: isFieldSelected(key, slot.id, row.id, 'shared') ? `2px solid ${BLUE}` : 'none',
                                     fontSize: 13, fontWeight: 600, color: COMPARTIDO.text, padding: '10px 12px',
                                     backgroundColor: COMPARTIDO.bg,
                                   }}
@@ -274,13 +413,14 @@ export default function MenuScreen() {
                                 <>
                                   <div style={{ flex: 1, backgroundColor: MARIA_F.bg, borderRight: `1px solid ${MARIA_F.border}` }}>
                                     <div style={{ fontSize: 10, fontWeight: 700, color: MARIA_F.text, padding: '4px 12px 0' }}>MARIA F</div>
-                                    <input
-                                      value={row.personF}
+                                    <AutoTextarea
+                                      value={getFieldValue(key, slot.id, row, 'personF')}
                                       placeholder="Su plato…"
                                       onFocus={() => setSelectedCell({ day: key, slot: slot.id, rowId: row.id, field: 'personF' })}
-                                      onChange={e => updateField(key, slot.id, row.id, 'personF', e.target.value)}
+                                      onChange={v => handleFieldChange(key, slot.id, row.id, 'personF', v)}
+                                      onDrop={name => setFieldNow(key, slot.id, row.id, 'personF', name)}
                                       style={{
-                                        width: '100%', border: 'none', outline: isFieldSelected(key, slot.id, row.id, 'personF') ? `2px solid ${BLUE}` : 'none',
+                                        outline: isFieldSelected(key, slot.id, row.id, 'personF') ? `2px solid ${BLUE}` : 'none',
                                         fontSize: 13, fontWeight: 600, color: MARIA_F.text, padding: '2px 12px 8px',
                                         backgroundColor: 'transparent',
                                       }}
@@ -288,13 +428,14 @@ export default function MenuScreen() {
                                   </div>
                                   <div style={{ flex: 1, backgroundColor: MARIA_N.bg }}>
                                     <div style={{ fontSize: 10, fontWeight: 700, color: MARIA_N.text, padding: '4px 12px 0' }}>MARIA N</div>
-                                    <input
-                                      value={row.personN}
+                                    <AutoTextarea
+                                      value={getFieldValue(key, slot.id, row, 'personN')}
                                       placeholder="Su plato…"
                                       onFocus={() => setSelectedCell({ day: key, slot: slot.id, rowId: row.id, field: 'personN' })}
-                                      onChange={e => updateField(key, slot.id, row.id, 'personN', e.target.value)}
+                                      onChange={v => handleFieldChange(key, slot.id, row.id, 'personN', v)}
+                                      onDrop={name => setFieldNow(key, slot.id, row.id, 'personN', name)}
                                       style={{
-                                        width: '100%', border: 'none', outline: isFieldSelected(key, slot.id, row.id, 'personN') ? `2px solid ${BLUE}` : 'none',
+                                        outline: isFieldSelected(key, slot.id, row.id, 'personN') ? `2px solid ${BLUE}` : 'none',
                                         fontSize: 13, fontWeight: 600, color: MARIA_N.text, padding: '2px 12px 8px',
                                         backgroundColor: 'transparent',
                                       }}

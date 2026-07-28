@@ -92,6 +92,7 @@ export interface MenuState {
   currentWeekStart: string;
   weekMenu: WeeklyMenu;
   recentPurchases: RecentPurchaseItem[];
+  customIdeas: RecentPurchaseItem[];
   loading: boolean;
   error: string | null;
 }
