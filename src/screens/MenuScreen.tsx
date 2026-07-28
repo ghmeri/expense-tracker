@@ -126,6 +126,7 @@ export default function MenuScreen() {
 
   const [dietFilter, setDietFilter] = useState<DietTag | null>(null);
   const [selectedCell, setSelectedCell] = useState<SelectedCell | null>(null);
+  const [ideasOpen, setIdeasOpen] = useState(true);
 
   // Buffer local de edición: evita que las respuestas del servidor (que
   // llegan con retraso) pisen lo que estás escribiendo ahora mismo.
@@ -288,6 +289,7 @@ export default function MenuScreen() {
       </div>
 
       <div className="menu-layout">
+        {view === 'week' && (
         <div className="menu-side">
           <Panel title="🛒 Compras recientes">
             {recentPurchases.length === 0 ? (
@@ -320,83 +322,95 @@ export default function MenuScreen() {
             )}
           </Panel>
 
-          {/* Panel de ideas: nota amarilla, como en el mockup */}
+          {/* Panel de ideas: nota amarilla, colapsable como el de compras */}
           <div style={{
             backgroundColor: COLORS.yellow, border: border(2.5), borderRadius: 14,
-            boxShadow: shadow(), padding: 15, marginBottom: 16,
+            boxShadow: shadow(), marginBottom: 16, overflow: 'hidden',
           }}>
-            <div style={{ fontFamily: FONT_HEAD, fontWeight: 700, fontSize: 14.5, color: COLORS.ink, marginBottom: 3 }}>
-              💡 Ideas
-            </div>
-            <div style={{ fontSize: 11.5, color: '#5C4B2E', marginBottom: 12 }}>
-              Arrastra una idea al menú, o toca un plato y luego una idea.
-            </div>
-            <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
-              {([null, 'vegetariano', 'con_carne'] as const).map(tag => (
-                <button
-                  key={String(tag)}
-                  onClick={() => setDietFilter(tag)}
-                  style={{
-                    padding: '5px 11px', borderRadius: 8, fontSize: 11, cursor: 'pointer',
-                    border: border(2), fontFamily: FONT_HEAD, fontWeight: 700,
-                    backgroundColor: dietFilter === tag ? COLORS.ink : COLORS.card,
-                    color: dietFilter === tag ? COLORS.yellow : COLORS.ink,
-                  }}
-                >
-                  {tag === null ? 'Todas' : tag === 'vegetariano' ? '🥦 Veggie' : '🍖 Con carne'}
-                </button>
-              ))}
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {filteredIdeas.map(idea => (
-                <button
-                  key={idea.id}
-                  {...draggableIdea(idea.name)}
-                  onClick={() => applyIdea(idea.name)}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 8, textAlign: 'left',
-                    border: border(2), borderRadius: 10, padding: '9px 11px',
-                    backgroundColor: COLORS.card, color: COLORS.ink, fontSize: 12.5, fontWeight: 600, cursor: 'grab',
-                  }}
-                >
-                  {idea.dietTag === 'vegetariano' ? '🥦' : '🍖'} {idea.name}
-                </button>
-              ))}
-              {customIdeas.length > 0 && (
-                <>
-                  <div style={{ fontFamily: FONT_HEAD, fontSize: 11, fontWeight: 700, color: '#5C4B2E', textTransform: 'uppercase', marginTop: 6 }}>
-                    🧑‍🍳 Vuestras recetas
-                  </div>
-                  {customIdeas.map(idea => (
-                    <div
-                      key={idea.name}
+            <button
+              onClick={() => setIdeasOpen(o => !o)}
+              style={{
+                width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '14px 15px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left',
+              }}
+            >
+              <span style={{ fontFamily: FONT_HEAD, fontWeight: 700, fontSize: 14.5, color: COLORS.ink }}>💡 Ideas</span>
+              <span style={{ fontSize: 12, color: COLORS.ink, transform: ideasOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>▾</span>
+            </button>
+            {ideasOpen && (
+              <div style={{ padding: '0 15px 15px' }}>
+                <div style={{ fontSize: 11.5, color: '#5C4B2E', marginBottom: 12 }}>
+                  Arrastra una idea al menú, o toca un plato y luego una idea.
+                </div>
+                <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
+                  {([null, 'vegetariano', 'con_carne'] as const).map(tag => (
+                    <button
+                      key={String(tag)}
+                      onClick={() => setDietFilter(tag)}
+                      style={{
+                        padding: '5px 11px', borderRadius: 8, fontSize: 11, cursor: 'pointer',
+                        border: border(2), fontFamily: FONT_HEAD, fontWeight: 700,
+                        backgroundColor: dietFilter === tag ? COLORS.ink : COLORS.card,
+                        color: dietFilter === tag ? COLORS.yellow : COLORS.ink,
+                      }}
+                    >
+                      {tag === null ? 'Todas' : tag === 'vegetariano' ? '🥦 Veggie' : '🍖 Con carne'}
+                    </button>
+                  ))}
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {filteredIdeas.map(idea => (
+                    <button
+                      key={idea.id}
                       {...draggableIdea(idea.name)}
                       onClick={() => applyIdea(idea.name)}
                       style={{
-                        display: 'flex', alignItems: 'center', gap: 8, cursor: 'grab',
+                        display: 'flex', alignItems: 'center', gap: 8, textAlign: 'left',
                         border: border(2), borderRadius: 10, padding: '9px 11px',
-                        backgroundColor: COLORS.card, color: COLORS.ink, fontSize: 12.5, fontWeight: 600,
+                        backgroundColor: COLORS.card, color: COLORS.ink, fontSize: 12.5, fontWeight: 600, cursor: 'grab',
                       }}
                     >
-                      <span style={{ flex: 1 }}>{idea.name}</span>
-                      <button
-                        onClick={e => { e.stopPropagation(); dispatch(removeCustomIdea(idea.name)); }}
-                        title="Quitar idea"
-                        style={{
-                          width: 18, height: 18, borderRadius: '50%', border: 'none',
-                          backgroundColor: COLORS.bg, color: COLORS.muted, fontSize: 11,
-                          lineHeight: '18px', cursor: 'pointer', flexShrink: 0,
-                        }}
-                      >
-                        ×
-                      </button>
-                    </div>
+                      {idea.dietTag === 'vegetariano' ? '🥦' : '🍖'} {idea.name}
+                    </button>
                   ))}
-                </>
-              )}
-            </div>
+                  {customIdeas.length > 0 && (
+                    <>
+                      <div style={{ fontFamily: FONT_HEAD, fontSize: 11, fontWeight: 700, color: '#5C4B2E', textTransform: 'uppercase', marginTop: 6 }}>
+                        🧑‍🍳 Vuestras recetas
+                      </div>
+                      {customIdeas.map(idea => (
+                        <div
+                          key={idea.name}
+                          {...draggableIdea(idea.name)}
+                          onClick={() => applyIdea(idea.name)}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: 8, cursor: 'grab',
+                            border: border(2), borderRadius: 10, padding: '9px 11px',
+                            backgroundColor: COLORS.card, color: COLORS.ink, fontSize: 12.5, fontWeight: 600,
+                          }}
+                        >
+                          <span style={{ flex: 1 }}>{idea.name}</span>
+                          <button
+                            onClick={e => { e.stopPropagation(); dispatch(removeCustomIdea(idea.name)); }}
+                            title="Quitar idea"
+                            style={{
+                              width: 18, height: 18, borderRadius: '50%', border: 'none',
+                              backgroundColor: COLORS.bg, color: COLORS.muted, fontSize: 11,
+                              lineHeight: '18px', cursor: 'pointer', flexShrink: 0,
+                            }}
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
+        )}
 
         <div className="menu-main">
           {view === 'week' ? (

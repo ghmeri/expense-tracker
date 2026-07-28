@@ -60,6 +60,7 @@ export default function RecipesScreen() {
   const [dietFilter, setDietFilter] = useState<DietTag | null>(null);
   const [newName, setNewName] = useState('');
   const [newDiet, setNewDiet] = useState<DietTag>('vegetariano');
+  const [nameDraft, setNameDraft] = useState<Record<string, string>>({});
   const [notesDraft, setNotesDraft] = useState<Record<string, string>>({});
   const [timeDraft, setTimeDraft] = useState<Record<string, string>>({});
   const [ingredientDraft, setIngredientDraft] = useState<Record<string, string>>({});
@@ -87,9 +88,17 @@ export default function RecipesScreen() {
 
   const removeRecipe = (id: string) => {
     save(recipes.filter(r => r.id !== id));
+    setNameDraft(prev => { const next = { ...prev }; delete next[id]; return next; });
     setNotesDraft(prev => { const next = { ...prev }; delete next[id]; return next; });
     setTimeDraft(prev => { const next = { ...prev }; delete next[id]; return next; });
     setIngredientDraft(prev => { const next = { ...prev }; delete next[id]; return next; });
+  };
+
+  const commitName = (id: string) => {
+    if (!(id in nameDraft)) return;
+    const name = capitalizeFirst(nameDraft[id].trim());
+    if (name) updateRecipe(id, { name });
+    setNameDraft(prev => { const next = { ...prev }; delete next[id]; return next; });
   };
 
   const commitNotes = (id: string) => {
@@ -206,7 +215,16 @@ export default function RecipesScreen() {
             boxShadow: shadow(3),
           }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, gap: 8 }}>
-              <div style={{ fontFamily: FONT_HEAD, fontSize: 14.5, fontWeight: 700, color: COLORS.ink }}>{recipe.name}</div>
+              <input
+                value={recipe.id in nameDraft ? nameDraft[recipe.id] : recipe.name}
+                onChange={e => setNameDraft(prev => ({ ...prev, [recipe.id]: e.target.value }))}
+                onBlur={() => commitName(recipe.id)}
+                onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                style={{
+                  flex: 1, fontFamily: FONT_HEAD, fontSize: 14.5, fontWeight: 700, color: COLORS.ink,
+                  border: 'none', outline: 'none', background: 'transparent', padding: 0, minWidth: 0,
+                }}
+              />
               <button onClick={() => removeRecipe(recipe.id)} style={{
                 width: 24, height: 24, borderRadius: '50%', border: 'none', backgroundColor: COLORS.cardAlt,
                 color: COLORS.mutedLighter, fontSize: 13, cursor: 'pointer', flexShrink: 0,
@@ -250,7 +268,6 @@ export default function RecipesScreen() {
                 ref={el => { fileInputs.current[recipe.id] = el; }}
                 type="file"
                 accept="image/*"
-                capture="environment"
                 style={{ display: 'none' }}
                 onChange={e => { handlePhotoFile(recipe, e.target.files?.[0]); e.target.value = ''; }}
               />
