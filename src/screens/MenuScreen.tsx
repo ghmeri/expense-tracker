@@ -353,11 +353,12 @@ export default function MenuScreen() {
             <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: 13, marginBottom: 12 }}>Cargando…</div>
           )}
 
+          <div className="responsive-card-grid">
           {WEEK_DAYS.map(({ key, label }, index) => {
             const today = isToday(currentWeekStart, index);
             return (
               <div key={key} style={{
-                backgroundColor: '#fff', borderRadius: 16, marginBottom: 14, overflow: 'hidden',
+                backgroundColor: '#fff', borderRadius: 16, overflow: 'hidden',
                 boxShadow: '0 1px 8px rgba(0,0,0,0.06)',
                 border: today ? `2px solid ${BLUE}` : '2px solid transparent',
               }}>
@@ -492,6 +493,7 @@ export default function MenuScreen() {
               </div>
             );
           })}
+          </div>
         </div>
       </div>
     </div>

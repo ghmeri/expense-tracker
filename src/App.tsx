@@ -27,9 +27,9 @@ function AppContent() {
   const [tab, setTab] = useState<Tab>('home');
 
   return (
-    <div style={{
+    <div className="app-shell" style={{
       display: 'flex', flexDirection: 'column',
-      height: '100%', maxWidth: 960,
+      height: '100%',
       margin: '0 auto', backgroundColor: '#f0f4f8',
       position: 'relative', boxShadow: '0 0 40px rgba(0,0,0,0.08)',
     }}>

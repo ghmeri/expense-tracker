@@ -9,6 +9,17 @@ html, body, #root {
   overflow: hidden;
 }
 
+/* ── Ancho de la app: más aire en tablet/escritorio ── */
+.app-shell {
+  max-width: 960px;
+}
+@media (min-width: 900px) {
+  .app-shell { max-width: 1200px; }
+}
+@media (min-width: 1300px) {
+  .app-shell { max-width: 1360px; }
+}
+
 /* ── Menú semanal: calendario + barra lateral de compras/ideas ── */
 .menu-layout {
   display: flex;
@@ -23,6 +34,21 @@ html, body, #root {
 .menu-layout > .menu-main {
   flex: 3 1 420px;
   min-width: 280px;
+}
+
+/* En móvil los días se apilan a lo alto; a partir de tablet se reparten
+   en columnas para aprovechar el ancho y que no se vea todo apretado. */
+.responsive-card-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+@media (min-width: 720px) {
+  .responsive-card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    align-items: start;
+  }
 }
 
 body {

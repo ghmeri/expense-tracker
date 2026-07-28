@@ -103,6 +103,9 @@ export interface Recipe {
   dietTag: DietTag;
   rating: number; // 0-5
   notes: string;
+  ingredients: string[];
+  time: string;       // texto libre, ej "30 min"
+  photoUri?: string;  // foto comprimida en base64, opcional
 }
 
 export interface RecipeState {
