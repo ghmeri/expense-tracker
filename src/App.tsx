@@ -2,16 +2,18 @@ import React, { useState } from 'react';
 import { Provider } from 'react-redux';
 import { store } from './store';
 import HomeScreen from './screens/HomeScreen';
+import TicketsScreen from './screens/TicketsScreen';
 import AddExpenseScreen from './screens/AddExpenseScreen';
 import SummaryScreen from './screens/SummaryScreen';
 import MenuScreen from './screens/MenuScreen';
 import SettingsScreen from './screens/SettingsScreen';
 import './App.css';
 
-type Tab = 'home' | 'add' | 'summary' | 'menu' | 'settings';
+type Tab = 'home' | 'tickets' | 'add' | 'summary' | 'menu' | 'settings';
 
 const TABS: { id: Tab; icon: string; label: string }[] = [
   { id: 'home', icon: '🏠', label: 'Inicio' },
+  { id: 'tickets', icon: '🧾', label: 'Gastos' },
   { id: 'add', icon: '➕', label: 'Añadir' },
   { id: 'summary', icon: '📊', label: 'Resumen' },
   { id: 'menu', icon: '🍽️', label: 'Menú' },
@@ -24,14 +26,15 @@ function AppContent() {
   return (
     <div style={{
       display: 'flex', flexDirection: 'column',
-      height: '100dvh', maxWidth: 960,
+      height: '100%', maxWidth: 960,
       margin: '0 auto', backgroundColor: '#f0f4f8',
       position: 'relative', boxShadow: '0 0 40px rgba(0,0,0,0.08)',
     }}>
       {/* Contenido */}
       <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-        {tab === 'home' && <HomeScreen />}
-        {tab === 'add' && <AddExpenseScreen onSave={() => setTab('home')} />}
+        {tab === 'home' && <HomeScreen onNavigate={setTab} />}
+        {tab === 'tickets' && <TicketsScreen />}
+        {tab === 'add' && <AddExpenseScreen onSave={() => setTab('tickets')} />}
         {tab === 'summary' && <SummaryScreen />}
         {tab === 'menu' && <MenuScreen />}
         {tab === 'settings' && <SettingsScreen />}

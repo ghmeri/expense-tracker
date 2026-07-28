@@ -5,7 +5,6 @@ import { pushRecentPurchases } from '../store/menuSlice';
 import { RootState, AppDispatch } from '../store';
 import { Category, Expense, LineItem } from '../types';
 import { analyzeReceiptImage } from '../services/ocrService';
-import { getHouseholdCode } from '../services/household';
 
 const BLUE = '#2563eb';
 const BLUE_LIGHT = '#eff6ff';
@@ -141,11 +140,8 @@ export default function AddExpenseScreen({ onSave }: Props) {
     dispatch(addExpense(expense));
 
     if (expense.lineItems && expense.lineItems.length > 0) {
-      const householdCode = getHouseholdCode();
-      if (householdCode) {
-        const names = expense.lineItems.map(item => item.name).filter(Boolean);
-        dispatch(pushRecentPurchases({ code: householdCode, names })).catch(() => {});
-      }
+      const names = expense.lineItems.map(item => item.name).filter(Boolean);
+      dispatch(pushRecentPurchases(names)).catch(() => {});
     }
 
     onSave();

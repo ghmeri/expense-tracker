@@ -1,6 +1,6 @@
 import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { MealEntry, MenuState, WeekDay, WeeklyMenu } from '../types';
-import { getHouseholdCode } from '../services/household';
+import { DietTag, Dish, MealSlot, MenuState, WeekDay, WeeklyMenu } from '../types';
+import { HOUSEHOLD_CODE } from '../services/household';
 import {
   getWeekMenu,
   saveWeekMenu,
@@ -10,7 +10,6 @@ import {
 import { getMondayISO } from '../utils/date';
 
 const initialState: MenuState = {
-  householdCode: getHouseholdCode(),
   currentWeekStart: getMondayISO(new Date()),
   weekMenu: {},
   recentPurchases: [],
@@ -20,8 +19,8 @@ const initialState: MenuState = {
 
 export const fetchWeekMenu = createAsyncThunk(
   'menu/fetchWeekMenu',
-  async ({ code, weekStart }: { code: string; weekStart: string }) => {
-    const doc = await getWeekMenu(code, weekStart);
+  async (weekStart: string) => {
+    const doc = await getWeekMenu(HOUSEHOLD_CODE, weekStart);
     return doc.menu;
   }
 );
@@ -29,42 +28,37 @@ export const fetchWeekMenu = createAsyncThunk(
 export const saveMealSlot = createAsyncThunk(
   'menu/saveMealSlot',
   async (
-    { code, weekStart, day, slot, entry }:
-    { code: string; weekStart: string; day: WeekDay; slot: 'comida' | 'cena'; entry: MealEntry },
+    { weekStart, day, slot, category, dish }:
+    { weekStart: string; day: WeekDay; slot: MealSlot; category: DietTag; dish: Dish },
     { getState }
   ) => {
     const state = getState() as { menu: MenuState };
     const updatedMenu: WeeklyMenu = {
       ...state.menu.weekMenu,
-      [day]: { ...state.menu.weekMenu[day], [slot]: entry },
+      [day]: {
+        ...state.menu.weekMenu[day],
+        [slot]: { ...state.menu.weekMenu[day]?.[slot], [category]: dish },
+      },
     };
-    const doc = await saveWeekMenu(code, weekStart, updatedMenu);
+    const doc = await saveWeekMenu(HOUSEHOLD_CODE, weekStart, updatedMenu);
     return doc.menu;
   }
 );
 
 export const fetchRecentPurchases = createAsyncThunk(
   'menu/fetchRecentPurchases',
-  async (code: string) => apiGetRecentPurchases(code)
+  async () => apiGetRecentPurchases(HOUSEHOLD_CODE)
 );
 
 export const pushRecentPurchases = createAsyncThunk(
   'menu/pushRecentPurchases',
-  async ({ code, names }: { code: string; names: string[] }) => apiPushRecentPurchases(code, names)
+  async (names: string[]) => apiPushRecentPurchases(HOUSEHOLD_CODE, names)
 );
 
 const menuSlice = createSlice({
   name: 'menu',
   initialState,
   reducers: {
-    setHouseholdCode(state, action: PayloadAction<string>) {
-      state.householdCode = action.payload;
-    },
-    clearHousehold(state) {
-      state.householdCode = null;
-      state.weekMenu = {};
-      state.recentPurchases = [];
-    },
     setCurrentWeekStart(state, action: PayloadAction<string>) {
       state.currentWeekStart = action.payload;
       state.weekMenu = {};
@@ -93,5 +87,5 @@ const menuSlice = createSlice({
   },
 });
 
-export const { setHouseholdCode, clearHousehold, setCurrentWeekStart } = menuSlice.actions;
+export const { setCurrentWeekStart } = menuSlice.actions;
 export default menuSlice.reducer;

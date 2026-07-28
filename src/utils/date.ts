@@ -44,3 +44,16 @@ export const formatWeekRange = (weekStartISO: string): string => {
   const endLabel = `${end.getDate()} ${MONTHS_ES[end.getMonth()]}`;
   return `${startLabel} – ${endLabel}`;
 };
+
+/** Devuelve "27 jul" para el día `index` (0=lunes..6=domingo) de la semana. */
+export const getDayDateLabel = (weekStartISO: string, index: number): string => {
+  const d = new Date(weekStartISO + 'T00:00:00');
+  d.setDate(d.getDate() + index);
+  return `${d.getDate()} ${MONTHS_ES[d.getMonth()]}`;
+};
+
+export const isToday = (weekStartISO: string, index: number): boolean => {
+  const d = new Date(weekStartISO + 'T00:00:00');
+  d.setDate(d.getDate() + index);
+  return toISODate(d) === toISODate(new Date());
+};

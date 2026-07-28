@@ -48,21 +48,28 @@ export interface FilterState {
   userId: string | 'todos';
 }
 
-export type DietTag = 'vegetariano' | 'con_carne' | null;
+export type DietTag = 'vegetariano' | 'con_carne';
 
 export type MealSlot = 'comida' | 'cena';
 
-export interface MealEntry {
+export type Person = 'maria_f' | 'maria_n' | 'ambas' | null;
+
+export interface Dish {
   text: string;
-  dietTag: DietTag;
+  person: Person;
 }
+
+export type DaySlotDishes = {
+  vegetariano?: Dish;
+  con_carne?: Dish;
+};
 
 export type WeekDay = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
 
 export type WeeklyMenu = {
   [day in WeekDay]?: {
-    comida?: MealEntry;
-    cena?: MealEntry;
+    comida?: DaySlotDishes;
+    cena?: DaySlotDishes;
   };
 };
 
@@ -80,11 +87,10 @@ export interface RecentPurchaseItem {
 export interface MealIdea {
   id: string;
   name: string;
-  dietTag: 'vegetariano' | 'con_carne';
+  dietTag: DietTag;
 }
 
 export interface MenuState {
-  householdCode: string | null;
   currentWeekStart: string;
   weekMenu: WeeklyMenu;
   recentPurchases: RecentPurchaseItem[];
