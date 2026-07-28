@@ -4,15 +4,17 @@ import { store } from './store';
 import HomeScreen from './screens/HomeScreen';
 import AddExpenseScreen from './screens/AddExpenseScreen';
 import SummaryScreen from './screens/SummaryScreen';
+import MenuScreen from './screens/MenuScreen';
 import SettingsScreen from './screens/SettingsScreen';
 import './App.css';
 
-type Tab = 'home' | 'add' | 'summary' | 'settings';
+type Tab = 'home' | 'add' | 'summary' | 'menu' | 'settings';
 
 const TABS: { id: Tab; icon: string; label: string }[] = [
   { id: 'home', icon: '🏠', label: 'Inicio' },
   { id: 'add', icon: '➕', label: 'Añadir' },
   { id: 'summary', icon: '📊', label: 'Resumen' },
+  { id: 'menu', icon: '🍽️', label: 'Menú' },
   { id: 'settings', icon: '⚙️', label: 'Ajustes' },
 ];
 
@@ -31,6 +33,7 @@ function AppContent() {
         {tab === 'home' && <HomeScreen />}
         {tab === 'add' && <AddExpenseScreen onSave={() => setTab('home')} />}
         {tab === 'summary' && <SummaryScreen />}
+        {tab === 'menu' && <MenuScreen />}
         {tab === 'settings' && <SettingsScreen />}
       </div>
 

@@ -47,3 +47,47 @@ export interface FilterState {
   category: Category | 'todas';
   userId: string | 'todos';
 }
+
+export type DietTag = 'vegetariano' | 'con_carne' | null;
+
+export type MealSlot = 'comida' | 'cena';
+
+export interface MealEntry {
+  text: string;
+  dietTag: DietTag;
+}
+
+export type WeekDay = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
+
+export type WeeklyMenu = {
+  [day in WeekDay]?: {
+    comida?: MealEntry;
+    cena?: MealEntry;
+  };
+};
+
+export interface WeekMenuDocument {
+  weekStart: string;
+  menu: WeeklyMenu;
+  updatedAt: string;
+}
+
+export interface RecentPurchaseItem {
+  name: string;
+  lastSeenAt: string;
+}
+
+export interface MealIdea {
+  id: string;
+  name: string;
+  dietTag: 'vegetariano' | 'con_carne';
+}
+
+export interface MenuState {
+  householdCode: string | null;
+  currentWeekStart: string;
+  weekMenu: WeeklyMenu;
+  recentPurchases: RecentPurchaseItem[];
+  loading: boolean;
+  error: string | null;
+}

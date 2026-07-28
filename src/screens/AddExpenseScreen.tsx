@@ -1,9 +1,11 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { addExpense } from '../store/expenseSlice';
-import { RootState } from '../store';
+import { pushRecentPurchases } from '../store/menuSlice';
+import { RootState, AppDispatch } from '../store';
 import { Category, Expense, LineItem } from '../types';
 import { analyzeReceiptImage } from '../services/ocrService';
+import { getHouseholdCode } from '../services/household';
 
 const BLUE = '#2563eb';
 const BLUE_LIGHT = '#eff6ff';
@@ -56,7 +58,7 @@ const resizeImage = (file: File): Promise<string> =>
 interface Props { onSave: () => void; }
 
 export default function AddExpenseScreen({ onSave }: Props) {
-  const dispatch  = useDispatch();
+  const dispatch  = useDispatch<AppDispatch>();
   const { users } = useSelector((state: RootState) => state.expenses);
 
   const [step,        setStep]        = useState<Step>('capture');
@@ -137,6 +139,15 @@ export default function AddExpenseScreen({ onSave }: Props) {
       lineItems: lineItems.length > 0 ? lineItems : undefined,
     };
     dispatch(addExpense(expense));
+
+    if (expense.lineItems && expense.lineItems.length > 0) {
+      const householdCode = getHouseholdCode();
+      if (householdCode) {
+        const names = expense.lineItems.map(item => item.name).filter(Boolean);
+        dispatch(pushRecentPurchases({ code: householdCode, names })).catch(() => {});
+      }
+    }
+
     onSave();
   };
 
