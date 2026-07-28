@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { RootState } from '../store';
+import { AppDispatch, RootState } from '../store';
 import { loadData, removeExpense } from '../store/expenseSlice';
 import ExpenseCard from '../components/Expenses/ExpenseCard';
 import FilterBar from '../components/Filters/FilterBar';
@@ -16,7 +16,7 @@ const initialFilters: FilterState = {
 };
 
 export default function TicketsScreen() {
-  const dispatch = useDispatch();
+  const dispatch = useDispatch<AppDispatch>();
   const { expenses, users } = useSelector((state: RootState) => state.expenses);
   const [filters, setFilters] = useState<FilterState>(initialFilters);
   const [showExport, setShowExport] = useState(false);

@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { RootState } from '../store';
-import { updateUsers } from '../store/expenseSlice';
-import { updateUserName } from '../services/storage';
+import { AppDispatch, RootState } from '../store';
+import { saveUsers } from '../store/expenseSlice';
 
 export default function SettingsScreen() {
-  const dispatch = useDispatch();
+  const dispatch = useDispatch<AppDispatch>();
   const { users } = useSelector((state: RootState) => state.expenses);
   const [names, setNames] = useState<Record<string, string>>(
     Object.fromEntries(users.map(u => [u.id, u.name]))
@@ -13,12 +12,7 @@ export default function SettingsScreen() {
   const [saved, setSaved] = useState(false);
 
   const handleSave = () => {
-    users.forEach(user => {
-      if (names[user.id] !== undefined && names[user.id] !== user.name) {
-        updateUserName(user.id, names[user.id]);
-      }
-    });
-    dispatch(updateUsers(users.map(u => ({ ...u, name: names[u.id] ?? u.name }))));
+    dispatch(saveUsers(users.map(u => ({ ...u, name: names[u.id] ?? u.name }))));
     setSaved(true);
     setTimeout(() => setSaved(false), 2500);
   };

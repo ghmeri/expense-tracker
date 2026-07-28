@@ -96,3 +96,17 @@ export interface MenuState {
   loading: boolean;
   error: string | null;
 }
+
+export interface Recipe {
+  id: string;
+  name: string;
+  dietTag: DietTag;
+  rating: number; // 0-5
+  notes: string;
+}
+
+export interface RecipeState {
+  recipes: Recipe[];
+  loading: boolean;
+  error: string | null;
+}

@@ -48,11 +48,13 @@ function Panel({ title, children, defaultOpen = true }: { title: string; childre
   );
 }
 
+const capitalizeFirst = (s: string): string => s.length === 0 ? s : s.charAt(0).toUpperCase() + s.slice(1);
+
 /** Textarea que crece con el contenido y hace wrap del texto (mejor lectura en tablet) */
 function AutoTextarea(props: {
   value: string; placeholder: string; style: React.CSSProperties;
   onFocus: () => void; onChange: (value: string) => void;
-  onDrop: (name: string) => void;
+  onDrop: (name: string) => void; onBlur: () => void;
 }) {
   const ref = useRef<HTMLTextAreaElement>(null);
 
@@ -72,6 +74,7 @@ function AutoTextarea(props: {
       placeholder={props.placeholder}
       onFocus={props.onFocus}
       onChange={e => props.onChange(e.target.value)}
+      onBlur={props.onBlur}
       onDragOver={e => e.preventDefault()}
       onDrop={e => {
         e.preventDefault();
@@ -142,28 +145,35 @@ export default function MenuScreen() {
     return key in drafts ? drafts[key] : row[field];
   };
 
-  /** Escritura: actualiza al instante en pantalla y guarda tras una pausa breve. */
-  const handleFieldChange = (day: WeekDay, slot: MealSlot, rowId: string, field: Field, value: string) => {
+  /** Escritura: actualiza al instante en pantalla (con mayúscula inicial) y guarda tras una pausa breve. */
+  const handleFieldChange = (day: WeekDay, slot: MealSlot, rowId: string, field: Field, rawValue: string) => {
+    const value = capitalizeFirst(rawValue);
     const key = fieldKey(day, slot, rowId, field);
     setDrafts(prev => ({ ...prev, [key]: value }));
 
     clearTimeout(timers.current[key]);
-    timers.current[key] = setTimeout(async () => {
+    timers.current[key] = setTimeout(() => {
       const rows = getRows(day, slot).map(r => r.id === rowId ? { ...r, [field]: value } : r);
-      await dispatch(saveMealSlotRows({ weekStart: currentWeekStart, day, slot, rows }));
-      // Solo limpiamos el borrador si nadie ha seguido escribiendo mientras tanto.
-      setDrafts(prev => {
-        if (prev[key] !== value) return prev;
-        const next = { ...prev };
-        delete next[key];
-        return next;
-      });
-      if (value.trim()) dispatch(pushCustomIdea(value.trim()));
+      dispatch(saveMealSlotRows({ weekStart: currentWeekStart, day, slot, rows }));
     }, SAVE_DELAY);
   };
 
-  /** Cambio inmediato (arrastrar, botones, quitar fila): sin debounce. */
-  const setFieldNow = (day: WeekDay, slot: MealSlot, rowId: string, field: Field, value: string) => {
+  /** Al salir del campo: guarda ya (sin esperar la pausa) y, si hay texto, lo añade a "vuestras recetas". */
+  const commitField = (day: WeekDay, slot: MealSlot, rowId: string, field: Field) => {
+    const key = fieldKey(day, slot, rowId, field);
+    if (!(key in drafts)) return; // no había cambios pendientes
+    const value = drafts[key];
+    clearTimeout(timers.current[key]);
+
+    const rows = getRows(day, slot).map(r => r.id === rowId ? { ...r, [field]: value } : r);
+    saveRows(day, slot, rows);
+    setDrafts(prev => { const next = { ...prev }; delete next[key]; return next; });
+    if (value.trim()) dispatch(pushCustomIdea(value.trim()));
+  };
+
+  /** Cambio inmediato (arrastrar, botones, aplicar idea): sin debounce. */
+  const setFieldNow = (day: WeekDay, slot: MealSlot, rowId: string, field: Field, rawValue: string) => {
+    const value = capitalizeFirst(rawValue);
     const key = fieldKey(day, slot, rowId, field);
     setDrafts(prev => { const next = { ...prev }; delete next[key]; return next; });
     const rows = getRows(day, slot).map(r => r.id === rowId ? { ...r, [field]: value } : r);
@@ -176,10 +186,11 @@ export default function MenuScreen() {
   };
 
   const addRowWithDish = (day: WeekDay, slot: MealSlot, name: string) => {
+    const value = capitalizeFirst(name);
     const row = newRow('compartido');
-    row.shared = name;
+    row.shared = value;
     saveRows(day, slot, [...getRows(day, slot), row]);
-    dispatch(pushCustomIdea(name));
+    dispatch(pushCustomIdea(value));
   };
 
   const removeRow = (day: WeekDay, slot: MealSlot, rowId: string) => {
@@ -402,6 +413,7 @@ export default function MenuScreen() {
                                   placeholder="Plato compartido…"
                                   onFocus={() => setSelectedCell({ day: key, slot: slot.id, rowId: row.id, field: 'shared' })}
                                   onChange={v => handleFieldChange(key, slot.id, row.id, 'shared', v)}
+                                  onBlur={() => commitField(key, slot.id, row.id, 'shared')}
                                   onDrop={name => setFieldNow(key, slot.id, row.id, 'shared', name)}
                                   style={{
                                     flex: 1, outline: isFieldSelected(key, slot.id, row.id, 'shared') ? `2px solid ${BLUE}` : 'none',
@@ -418,6 +430,7 @@ export default function MenuScreen() {
                                       placeholder="Su plato…"
                                       onFocus={() => setSelectedCell({ day: key, slot: slot.id, rowId: row.id, field: 'personF' })}
                                       onChange={v => handleFieldChange(key, slot.id, row.id, 'personF', v)}
+                                      onBlur={() => commitField(key, slot.id, row.id, 'personF')}
                                       onDrop={name => setFieldNow(key, slot.id, row.id, 'personF', name)}
                                       style={{
                                         outline: isFieldSelected(key, slot.id, row.id, 'personF') ? `2px solid ${BLUE}` : 'none',
@@ -433,6 +446,7 @@ export default function MenuScreen() {
                                       placeholder="Su plato…"
                                       onFocus={() => setSelectedCell({ day: key, slot: slot.id, rowId: row.id, field: 'personN' })}
                                       onChange={v => handleFieldChange(key, slot.id, row.id, 'personN', v)}
+                                      onBlur={() => commitField(key, slot.id, row.id, 'personN')}
                                       onDrop={name => setFieldNow(key, slot.id, row.id, 'personN', name)}
                                       style={{
                                         outline: isFieldSelected(key, slot.id, row.id, 'personN') ? `2px solid ${BLUE}` : 'none',

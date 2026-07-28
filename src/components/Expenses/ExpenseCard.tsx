@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Expense, Category, LineItem } from '../../types';
 import { updateExpense } from '../../store/expenseSlice';
-import { RootState } from '../../store';
+import { AppDispatch, RootState } from '../../store';
 
 interface Props {
   expense: Expense;
@@ -30,7 +30,7 @@ const CATEGORIES: { label: string; value: Category; icon: string }[] = [
 ];
 
 export default function ExpenseCard({ expense, userName, userColor, onDelete }: Props) {
-  const dispatch = useDispatch();
+  const dispatch = useDispatch<AppDispatch>();
   const { users } = useSelector((state: RootState) => state.expenses);
 
   const [showImage, setShowImage] = useState(false);

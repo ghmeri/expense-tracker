@@ -33,6 +33,11 @@ export const updateExpense = (updated: Expense): void => {
   localStorage.setItem(EXPENSES_KEY, JSON.stringify(expenses));
 };
 
+/** Sobrescribe la caché local completa (usado tras fusionar con lo compartido en la nube). */
+export const setExpensesCache = (expenses: Expense[]): void => {
+  localStorage.setItem(EXPENSES_KEY, JSON.stringify(expenses));
+};
+
 export const getUsers = (): User[] => {
   const stored = localStorage.getItem(USERS_KEY);
   if (!stored) {

@@ -7,10 +7,11 @@ import TicketsScreen from './screens/TicketsScreen';
 import AddExpenseScreen from './screens/AddExpenseScreen';
 import SummaryScreen from './screens/SummaryScreen';
 import MenuScreen from './screens/MenuScreen';
+import RecipesScreen from './screens/RecipesScreen';
 import SettingsScreen from './screens/SettingsScreen';
 import './App.css';
 
-type Tab = 'home' | 'tickets' | 'add' | 'summary' | 'menu' | 'settings';
+type Tab = 'home' | 'tickets' | 'add' | 'summary' | 'menu' | 'recipes' | 'settings';
 
 const TABS: { id: Tab; icon: string; label: string }[] = [
   { id: 'home', icon: '🏠', label: 'Inicio' },
@@ -18,6 +19,7 @@ const TABS: { id: Tab; icon: string; label: string }[] = [
   { id: 'add', icon: '➕', label: 'Añadir' },
   { id: 'summary', icon: '📊', label: 'Resumen' },
   { id: 'menu', icon: '🍽️', label: 'Menú' },
+  { id: 'recipes', icon: '📖', label: 'Recetas' },
   { id: 'settings', icon: '⚙️', label: 'Ajustes' },
 ];
 
@@ -39,6 +41,7 @@ function AppContent() {
           {tab === 'add' && <AddExpenseScreen onSave={() => setTab('tickets')} />}
           {tab === 'summary' && <SummaryScreen />}
           {tab === 'menu' && <MenuScreen />}
+          {tab === 'recipes' && <RecipesScreen />}
           {tab === 'settings' && <SettingsScreen />}
         </ErrorBoundary>
       </div>

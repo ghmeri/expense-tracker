@@ -1,9 +1,9 @@
 import React, { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { RootState } from '../store';
+import { AppDispatch, RootState } from '../store';
 import { loadData } from '../store/expenseSlice';
 
-type Section = 'tickets' | 'add' | 'summary' | 'menu' | 'settings';
+type Section = 'tickets' | 'add' | 'summary' | 'menu' | 'recipes' | 'settings';
 
 interface Props { onNavigate: (section: Section) => void; }
 
@@ -12,11 +12,12 @@ const SECTIONS: { id: Section; icon: string; title: string; desc: string }[] = [
   { id: 'add', icon: '➕', title: 'Añadir gasto', desc: 'Escanea un ticket o añade un gasto manualmente.' },
   { id: 'summary', icon: '📊', title: 'Resumen', desc: 'Estadísticas por categoría, periodo y persona.' },
   { id: 'menu', icon: '🍽️', title: 'Menú semanal', desc: 'Planifica comidas y cenas de lunes a domingo.' },
+  { id: 'recipes', icon: '📖', title: 'Recetario', desc: 'Guarda vuestras recetas con tipo y puntuación.' },
   { id: 'settings', icon: '⚙️', title: 'Ajustes', desc: 'Gestiona los nombres de los usuarios.' },
 ];
 
 export default function HomeScreen({ onNavigate }: Props) {
-  const dispatch = useDispatch();
+  const dispatch = useDispatch<AppDispatch>();
   const { expenses } = useSelector((state: RootState) => state.expenses);
 
   useEffect(() => { dispatch(loadData()); }, []);

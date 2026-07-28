@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { RootState } from '../store';
+import { AppDispatch, RootState } from '../store';
 import { loadData } from '../store/expenseSlice';
 import { Category } from '../types';
 
@@ -15,7 +15,7 @@ const CATEGORY_ICONS: Record<Category, string> = {
 type Period = 'todo' | 'mes' | 'semana';
 
 export default function SummaryScreen() {
-  const dispatch = useDispatch();
+  const dispatch = useDispatch<AppDispatch>();
   const { expenses, users } = useSelector((state: RootState) => state.expenses);
   const [period, setPeriod] = useState<Period>('mes');
 
