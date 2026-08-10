@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
-  StyleSheet, ScrollView, Image, Alert,
+  StyleSheet, ScrollView, Image, Alert, ActivityIndicator,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as Crypto from 'expo-crypto';
@@ -9,6 +9,18 @@ import { useDispatch, useSelector } from 'react-redux';
 import { addExpense } from '../store/expenseSlice';
 import { RootState } from '../store';
 import { Category, Expense } from '../types';
+import { compressAndConvertImage } from '../services/imageService';
+
+const CATEGORY_COLORS: Record<string, { bg: string; text: string; border: string }> = {
+  alimentacion: { bg: '#FFE5B4', text: '#D2691E', border: '#FF8C00' },
+  transporte: { bg: '#D5E8F7', text: '#003366', border: '#0066CC' },
+  ocio: { bg: '#F0E5FF', text: '#6A0DAD', border: '#9932CC' },
+  salud: { bg: '#E8F5E9', text: '#1B5E20', border: '#4CAF50' },
+  hogar: { bg: '#FFF3E0', text: '#E65100', border: '#FF6F00' },
+  ropa: { bg: '#FCE4EC', text: '#880E4F', border: '#E91E63' },
+  tecnologia: { bg: '#E0F2F1', text: '#004D40', border: '#009688' },
+  otros: { bg: '#F3E5F5', text: '#512DA8', border: '#7B1FA2' },
+};
 
 const CATEGORIES: { label: string; value: Category; icon: string }[] = [
   { label: 'Alimentación', value: 'alimentacion', icon: '🛒' },
@@ -30,6 +42,7 @@ export default function AddExpenseScreen() {
   const [category, setCategory] = useState<Category>('otros');
   const [userId, setUserId] = useState('user1');
   const [imageUri, setImageUri] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -49,26 +62,43 @@ export default function AddExpenseScreen() {
     if (!result.canceled) setImageUri(result.assets[0].uri);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!amount || isNaN(parseFloat(amount))) {
       Alert.alert('Error', 'Introduce un importe válido');
       return;
     }
-    const expense: Expense = {
-      id: Crypto.randomUUID(),
-      amount: parseFloat(amount),
-      category,
-      description,
-      date: new Date().toISOString(),
-      imageUri: imageUri ?? undefined,
-      userId,
-      createdAt: new Date().toISOString(),
-    };
-    dispatch(addExpense(expense));
-    setAmount('');
-    setDescription('');
-    setImageUri(null);
-    Alert.alert('✅ Gasto añadido correctamente');
+
+    setIsSaving(true);
+    try {
+      let imageBase64: string | undefined;
+      if (imageUri) {
+        try {
+          imageBase64 = await compressAndConvertImage(imageUri);
+        } catch (error) {
+          Alert.alert('Error', 'No se pudo procesar la imagen');
+          setIsSaving(false);
+          return;
+        }
+      }
+
+      const expense: Expense = {
+        id: Crypto.randomUUID(),
+        amount: parseFloat(amount),
+        category,
+        description,
+        date: new Date().toISOString(),
+        imageUri: imageBase64,
+        userId,
+        createdAt: new Date().toISOString(),
+      };
+      dispatch(addExpense(expense));
+      setAmount('');
+      setDescription('');
+      setImageUri(null);
+      Alert.alert('✅ Gasto añadido correctamente');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -92,18 +122,28 @@ export default function AddExpenseScreen() {
 
       <Text style={styles.label}>Categoría</Text>
       <View style={styles.categories}>
-        {CATEGORIES.map(cat => (
-          <TouchableOpacity
-            key={cat.value}
-            style={[styles.catBtn, category === cat.value && styles.catBtnActive]}
-            onPress={() => setCategory(cat.value)}
-          >
-            <Text style={styles.catIcon}>{cat.icon}</Text>
-            <Text style={[styles.catLabel, category === cat.value && styles.catLabelActive]}>
-              {cat.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
+        {CATEGORIES.map(cat => {
+          const colors = CATEGORY_COLORS[cat.value];
+          const isSelected = category === cat.value;
+          return (
+            <TouchableOpacity
+              key={cat.value}
+              style={[
+                styles.catBtn,
+                {
+                  backgroundColor: isSelected ? colors.bg : '#fff',
+                  borderColor: isSelected ? colors.border : '#ddd',
+                },
+              ]}
+              onPress={() => setCategory(cat.value)}
+            >
+              <Text style={styles.catIcon}>{cat.icon}</Text>
+              <Text style={[styles.catLabel, isSelected && { color: colors.text, fontWeight: 'bold' }]}>
+                {cat.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
       </View>
 
       <Text style={styles.label}>¿Quién paga?</Text>
@@ -133,8 +173,12 @@ export default function AddExpenseScreen() {
 
       {imageUri && <Image source={{ uri: imageUri }} style={styles.preview} />}
 
-      <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
-        <Text style={styles.saveBtnText}>Guardar gasto</Text>
+      <TouchableOpacity style={styles.saveBtn} onPress={handleSave} disabled={isSaving}>
+        {isSaving ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <Text style={styles.saveBtnText}>Guardar gasto</Text>
+        )}
       </TouchableOpacity>
     </ScrollView>
   );

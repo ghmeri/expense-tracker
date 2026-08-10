@@ -11,7 +11,7 @@ interface Props {
 
 const CATEGORY_ICONS: Record<string, string> = {
   alimentacion: '🛒', transporte: '🚗', ocio: '🎮',
-  salud: '💊', hogar: '🏠', ropa: '👕', tecnologia: '💻', otros: '📦',
+  salud: '💊', hogar: '🏠', ropa: '👕', tecnologia: '💻', otros: '📦'
 };
 
 export default function ExpenseCard({ expense, userName, userColor, onDelete }: Props) {
@@ -43,7 +43,7 @@ export default function ExpenseCard({ expense, userName, userColor, onDelete }: 
         </View>
       </View>
       <View style={styles.right}>
-        <Text style={styles.amount}>{expense.amount.toFixed(2)} €</Text>
+        <Text style={styles.amount} numberOfLines={1}>{expense.amount.toFixed(2)} €</Text>
         <View style={styles.actions}>
           {expense.imageUri && (
             <TouchableOpacity onPress={() => setShowImage(true)}>
@@ -82,9 +82,9 @@ const styles = StyleSheet.create({
     marginTop: 4, alignSelf: 'flex-start',
   },
   userBadgeText: { color: '#fff', fontSize: 11, fontWeight: 'bold' },
-  right: { alignItems: 'flex-end', justifyContent: 'space-between' },
-  amount: { fontSize: 16, fontWeight: 'bold', color: '#6200ee' },
-  actions: { flexDirection: 'row', gap: 8 },
+  right: { alignItems: 'flex-end', justifyContent: 'space-between', maxWidth: '40%', paddingLeft: 8 },
+  amount: { fontSize: 14, fontWeight: 'bold', color: '#6200ee', flexShrink: 1 },
+  actions: { flexDirection: 'row', gap: 4 },
   actionBtn: { fontSize: 18 },
   modalBg: { flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'center' },
   fullImage: { width: '100%', height: '80%' },

@@ -10,6 +10,7 @@ export default function App() {
     initDatabase();
   }, []);
 
+  
   return (
     <Provider store={store}>
       <NavigationContainer>
