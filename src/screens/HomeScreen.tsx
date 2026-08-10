@@ -1,119 +1,64 @@
-import React, { useEffect, useState } from 'react';
-import { View, FlatList, StyleSheet, Text, TouchableOpacity, Alert } from 'react-native';
+import React, { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { RootState } from '../store';
-import { loadData, removeExpense } from '../store/expenseSlice';
-import ExpenseCard from '../components/Expenses/ExpenseCard';
-import FilterBar from '../components/Filters/FilterBar';
-import { FilterState } from '../types';
-import { exportToPDF, exportToCSV } from '../services/exportService';
+import { AppDispatch, RootState } from '../store';
+import { loadData } from '../store/expenseSlice';
+import { COLORS, FONT_HEAD, shadow, border } from '../theme';
 
-const initialFilters: FilterState = {
-  search: '',
-  dateFrom: null,
-  dateTo: null,
-  category: 'todas',
-  userId: 'todos',
-};
+type Section = 'tickets' | 'add' | 'summary' | 'menu' | 'recipes' | 'settings';
 
-export default function HomeScreen() {
-  const dispatch = useDispatch();
-  const { expenses, users } = useSelector((state: RootState) => state.expenses);
-  const [filters, setFilters] = useState<FilterState>(initialFilters);
-  const [showExport, setShowExport] = useState(false);
+interface Props { onNavigate: (section: Section) => void; }
+
+const SECTIONS: { id: Section; icon: string; title: string; desc: string }[] = [
+  { id: 'tickets', icon: '🧾', title: 'Gastos y tickets', desc: 'Consulta, filtra y exporta todos los gastos registrados.' },
+  { id: 'add', icon: '➕', title: 'Añadir gasto', desc: 'Escanea un ticket o añade un gasto manualmente.' },
+  { id: 'summary', icon: '📊', title: 'Resumen', desc: 'Estadísticas por categoría, periodo y persona.' },
+  { id: 'menu', icon: '🍽️', title: 'Menú semanal', desc: 'Planifica comidas y cenas de lunes a domingo.' },
+  { id: 'recipes', icon: '📖', title: 'Recetario', desc: 'Guarda vuestras recetas con tipo y puntuación.' },
+  { id: 'settings', icon: '⚙️', title: 'Ajustes', desc: 'Gestiona los nombres de los usuarios.' },
+];
+
+export default function HomeScreen({ onNavigate }: Props) {
+  const dispatch = useDispatch<AppDispatch>();
+  const { expenses } = useSelector((state: RootState) => state.expenses);
 
   useEffect(() => { dispatch(loadData()); }, []);
 
-  const getUserName = (userId: string) => users.find(u => u.id === userId)?.name ?? 'Desconocido';
-  const getUserColor = (userId: string) => users.find(u => u.id === userId)?.color ?? '#000';
-
-  const filtered = expenses.filter(e => {
-    if (filters.search) {
-      const q = filters.search.toLowerCase();
-      if (!e.description?.toLowerCase().includes(q) && !e.category.toLowerCase().includes(q)) return false;
-    }
-    if (filters.category !== 'todas' && e.category !== filters.category) return false;
-    if (filters.userId !== 'todos' && e.userId !== filters.userId) return false;
-    if (filters.dateFrom && new Date(e.date) < new Date(filters.dateFrom)) return false;
-    if (filters.dateTo && new Date(e.date) > new Date(filters.dateTo)) return false;
-    return true;
-  });
-
-  const total = filtered.reduce((sum, e) => sum + e.amount, 0);
-
-  const handleExport = (type: 'pdf' | 'csv') => {
-    setShowExport(false);
-    if (type === 'pdf') exportToPDF(filtered, users).catch(() => Alert.alert('Error al exportar PDF'));
-    else exportToCSV(filtered, users).catch(() => Alert.alert('Error al exportar CSV'));
-  };
+  const now = new Date();
+  const thisMonthTotal = expenses
+    .filter(e => { const d = new Date(e.date); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); })
+    .reduce((sum, e) => sum + e.amount, 0);
 
   return (
-    <View style={styles.container}>
-      <View style={styles.totalBox}>
-        <View style={styles.totalRow}>
-          <View>
-            <Text style={styles.totalLabel}>Total gastado</Text>
-            <Text style={styles.totalAmount}>{total.toFixed(2)} €</Text>
-            {filtered.length !== expenses.length && (
-              <Text style={styles.filterNote}>{filtered.length} de {expenses.length} gastos</Text>
-            )}
-          </View>
-          <TouchableOpacity style={styles.exportBtn} onPress={() => setShowExport(!showExport)}>
-            <Text style={styles.exportBtnText}>📤 Exportar</Text>
-          </TouchableOpacity>
-        </View>
-        {showExport && (
-          <View style={styles.exportOptions}>
-            <TouchableOpacity style={styles.exportOption} onPress={() => handleExport('pdf')}>
-              <Text style={styles.exportOptionText}>📄 Exportar PDF</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.exportOption} onPress={() => handleExport('csv')}>
-              <Text style={styles.exportOptionText}>📊 Exportar CSV (Excel)</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-      </View>
+    <div style={{ overflowY: 'auto', height: '100%', backgroundColor: COLORS.bg }}>
+      <div style={{ backgroundColor: COLORS.header, borderBottom: border(2.5), padding: '28px 24px 40px' }}>
+        <div style={{ color: 'rgba(38,32,26,0.65)', fontSize: 13, fontWeight: 600 }}>Este mes has gastado</div>
+        <div style={{ color: COLORS.headerText, fontFamily: FONT_HEAD, fontSize: 38, fontWeight: 700, lineHeight: 1.1 }}>
+          {thisMonthTotal.toFixed(2)} €
+        </div>
+        <div style={{ color: 'rgba(38,32,26,0.65)', fontSize: 13, marginTop: 4 }}>
+          {expenses.length} {expenses.length === 1 ? 'gasto' : 'gastos'} en total
+        </div>
+      </div>
 
-      <FilterBar filters={filters} users={users} onChange={setFilters} />
-
-      <FlatList
-        data={filtered}
-        keyExtractor={item => item.id}
-        renderItem={({ item }) => (
-          <ExpenseCard
-            expense={item}
-            userName={getUserName(item.userId)}
-            userColor={getUserColor(item.userId)}
-            onDelete={() => dispatch(removeExpense(item.id))}
-          />
-        )}
-        ListEmptyComponent={
-          <Text style={styles.empty}>
-            {expenses.length === 0 ? 'No hay gastos aún. ¡Añade el primero!' : 'No hay gastos que coincidan con los filtros'}
-          </Text>
-        }
-      />
-    </View>
+      <div style={{ padding: '20px 24px 40px', marginTop: 4 }}>
+        {SECTIONS.map(s => (
+          <button
+            key={s.id}
+            onClick={() => onNavigate(s.id)}
+            style={{
+              width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 14,
+              backgroundColor: COLORS.card, border: border(), borderRadius: 14,
+              padding: '15px 17px', marginBottom: 12, boxShadow: shadow(), cursor: 'pointer',
+            }}
+          >
+            <span style={{ fontSize: 26, flexShrink: 0 }}>{s.icon}</span>
+            <div>
+              <div style={{ fontFamily: FONT_HEAD, fontSize: 14.5, fontWeight: 700, color: COLORS.ink }}>{s.title}</div>
+              <div style={{ fontSize: 12.5, color: COLORS.muted, marginTop: 2 }}>{s.desc}</div>
+            </div>
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f5f5f5' },
-  totalBox: { backgroundColor: '#6200ee', padding: 20 },
-  totalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  totalLabel: { color: '#fff', fontSize: 14 },
-  totalAmount: { color: '#fff', fontSize: 32, fontWeight: 'bold' },
-  filterNote: { color: 'rgba(255,255,255,0.7)', fontSize: 12, marginTop: 2 },
-  exportBtn: {
-    backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 8,
-    padding: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.4)',
-  },
-  exportBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 13 },
-  exportOptions: { marginTop: 12, gap: 8 },
-  exportOption: {
-    backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 8,
-    padding: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)',
-  },
-  exportOptionText: { color: '#fff', fontWeight: 'bold', textAlign: 'center' },
-  empty: { textAlign: 'center', marginTop: 50, color: '#999', fontSize: 16 },
-});

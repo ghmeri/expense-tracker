@@ -1,60 +1,64 @@
-import * as SQLite from 'expo-sqlite';
 import { Expense, User } from '../types';
 
-const db = SQLite.openDatabaseSync('expenses.db');
+const EXPENSES_KEY = 'gx_expenses';
+const USERS_KEY = 'gx_users';
 
-export const initDatabase = (): void => {
-  db.execSync(`
-    CREATE TABLE IF NOT EXISTS users (
-      id TEXT PRIMARY KEY,
-      name TEXT NOT NULL,
-      color TEXT NOT NULL
-    );
-    CREATE TABLE IF NOT EXISTS expenses (
-      id TEXT PRIMARY KEY,
-      amount REAL NOT NULL,
-      category TEXT NOT NULL,
-      description TEXT,
-      date TEXT NOT NULL,
-      imageUri TEXT,
-      userId TEXT NOT NULL,
-      createdAt TEXT NOT NULL,
-      FOREIGN KEY (userId) REFERENCES users(id)
-    );
-    INSERT OR IGNORE INTO users (id, name, color) VALUES ('user1', 'Yo', '#6200ee');
-    INSERT OR IGNORE INTO users (id, name, color) VALUES ('user2', 'Mi pareja', '#03dac6');
-  `);
-};
+const DEFAULT_USERS: User[] = [
+  { id: 'user1',  name: 'Yo',               color: '#6200ee' },
+  { id: 'user2',  name: 'Mi pareja',         color: '#03dac6' },
+  { id: 'shared', name: 'Cuenta conjunta',   color: '#f59e0b' },
+];
 
 export const getExpenses = (): Expense[] => {
-  return db.getAllSync<Expense>('SELECT * FROM expenses ORDER BY date DESC');
+  try {
+    return JSON.parse(localStorage.getItem(EXPENSES_KEY) ?? '[]');
+  } catch {
+    return [];
+  }
 };
 
 export const addExpense = (expense: Expense): void => {
-  db.runSync(
-    `INSERT INTO expenses (id, amount, category, description, date, imageUri, userId, createdAt)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    [
-      expense.id,
-      expense.amount,
-      expense.category,
-      expense.description,
-      expense.date,
-      expense.imageUri ?? null,
-      expense.userId,
-      expense.createdAt,
-    ]
-  );
+  const expenses = getExpenses();
+  expenses.unshift(expense);
+  localStorage.setItem(EXPENSES_KEY, JSON.stringify(expenses));
 };
 
 export const deleteExpense = (id: string): void => {
-  db.runSync('DELETE FROM expenses WHERE id = ?', [id]);
+  const expenses = getExpenses().filter(e => e.id !== id);
+  localStorage.setItem(EXPENSES_KEY, JSON.stringify(expenses));
+};
+
+export const updateExpense = (updated: Expense): void => {
+  const expenses = getExpenses().map(e => e.id === updated.id ? updated : e);
+  localStorage.setItem(EXPENSES_KEY, JSON.stringify(expenses));
+};
+
+/** Sobrescribe la caché local completa (usado tras fusionar con lo compartido en la nube). */
+export const setExpensesCache = (expenses: Expense[]): void => {
+  localStorage.setItem(EXPENSES_KEY, JSON.stringify(expenses));
 };
 
 export const getUsers = (): User[] => {
-  return db.getAllSync<User>('SELECT * FROM users');
+  const stored = localStorage.getItem(USERS_KEY);
+  if (!stored) {
+    localStorage.setItem(USERS_KEY, JSON.stringify(DEFAULT_USERS));
+    return DEFAULT_USERS;
+  }
+  try {
+    const users: User[] = JSON.parse(stored);
+    // Ensure shared account always exists (migration for existing installs)
+    if (!users.find(u => u.id === 'shared')) {
+      const updated = [...users, { id: 'shared', name: 'Cuenta conjunta', color: '#f59e0b' }];
+      localStorage.setItem(USERS_KEY, JSON.stringify(updated));
+      return updated;
+    }
+    return users;
+  } catch {
+    return DEFAULT_USERS;
+  }
 };
 
 export const updateUserName = (id: string, name: string): void => {
-  db.runSync('UPDATE users SET name = ? WHERE id = ?', [name, id]);
+  const users = getUsers().map(u => (u.id === id ? { ...u, name } : u));
+  localStorage.setItem(USERS_KEY, JSON.stringify(users));
 };

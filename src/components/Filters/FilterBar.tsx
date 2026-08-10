@@ -1,10 +1,6 @@
 import React, { useState } from 'react';
-import {
-  View, Text, TextInput, TouchableOpacity,
-  StyleSheet, Modal, ScrollView, Platform,
-} from 'react-native';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import { FilterState, Category, User } from '../../types';
+import { COLORS, FONT_HEAD, border, shadow } from '../../theme';
 
 interface Props {
   filters: FilterState;
@@ -26,8 +22,6 @@ const CATEGORIES: { label: string; value: Category | 'todas' }[] = [
 
 export default function FilterBar({ filters, users, onChange }: Props) {
   const [showModal, setShowModal] = useState(false);
-  const [showDateFrom, setShowDateFrom] = useState(false);
-  const [showDateTo, setShowDateTo] = useState(false);
 
   const activeFiltersCount = [
     filters.dateFrom,
@@ -40,163 +34,179 @@ export default function FilterBar({ filters, users, onChange }: Props) {
     onChange({ search: filters.search, dateFrom: null, dateTo: null, category: 'todas', userId: 'todos' });
   };
 
+  const filterActive = activeFiltersCount > 0;
+
   return (
-    <View>
-      <View style={styles.searchRow}>
-        <TextInput
-          style={styles.searchInput}
+    <div>
+      {/* Barra de búsqueda */}
+      <div style={{ display: 'flex', padding: '12px 16px', gap: 10 }}>
+        <input
+          type="text"
           placeholder="🔍 Buscar gastos..."
           value={filters.search}
-          onChangeText={text => onChange({ ...filters, search: text })}
+          onChange={e => onChange({ ...filters, search: e.target.value })}
+          style={{
+            flex: 1, padding: '11px 15px', borderRadius: 10,
+            border: border(2), fontSize: 15,
+            backgroundColor: COLORS.card, outline: 'none',
+          }}
         />
-        <TouchableOpacity style={styles.filterBtn} onPress={() => setShowModal(true)}>
-          <Text style={styles.filterBtnText}>
-            ⚙️{activeFiltersCount > 0 ? ` (${activeFiltersCount})` : ''}
-          </Text>
-        </TouchableOpacity>
-      </View>
+        <button
+          onClick={() => setShowModal(true)}
+          style={{
+            padding: '10px 15px', borderRadius: 10,
+            border: border(2),
+            backgroundColor: filterActive ? COLORS.ink : COLORS.card,
+            color: filterActive ? COLORS.yellow : COLORS.muted,
+            fontFamily: FONT_HEAD, fontWeight: 700, fontSize: 14,
+          }}
+        >
+          ⚙️{filterActive ? ` (${activeFiltersCount})` : ''}
+        </button>
+      </div>
 
-      <Modal visible={showModal} animationType="slide" transparent>
-        <View style={styles.modalBg}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Filtros avanzados</Text>
-              <TouchableOpacity onPress={() => setShowModal(false)}>
-                <Text style={styles.closeBtn}>✕</Text>
-              </TouchableOpacity>
-            </View>
+      {/* Modal filtros */}
+      {showModal && (
+        <div
+          style={{
+            position: 'fixed', inset: 0, zIndex: 100,
+            backgroundColor: 'rgba(38,32,26,0.55)',
+            display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+          }}
+          onClick={e => { if (e.target === e.currentTarget) setShowModal(false); }}
+        >
+          <div style={{
+            backgroundColor: COLORS.bg, borderRadius: '16px 16px 0 0',
+            border: border(2.5), borderBottom: 'none',
+            padding: '20px 20px 32px',
+            width: '100%', maxWidth: 480, maxHeight: '80vh', overflowY: 'auto',
+          }}>
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <div style={{ fontFamily: FONT_HEAD, fontSize: 16, fontWeight: 700, color: COLORS.ink }}>Filtros avanzados</div>
+              <button
+                onClick={() => setShowModal(false)}
+                style={{ background: 'none', border: 'none', fontSize: 22, color: COLORS.muted, cursor: 'pointer' }}
+              >
+                ✕
+              </button>
+            </div>
 
-            <ScrollView>
-              <Text style={styles.sectionLabel}>📅 Rango de fechas</Text>
-              <View style={styles.dateRow}>
-                <TouchableOpacity style={styles.dateBtn} onPress={() => setShowDateFrom(true)}>
-                  <Text style={styles.dateBtnText}>
-                    Desde: {filters.dateFrom ? new Date(filters.dateFrom).toLocaleDateString('es-ES') : 'Sin filtro'}
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.dateBtn} onPress={() => setShowDateTo(true)}>
-                  <Text style={styles.dateBtnText}>
-                    Hasta: {filters.dateTo ? new Date(filters.dateTo).toLocaleDateString('es-ES') : 'Sin filtro'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
+            {/* Fechas */}
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontFamily: FONT_HEAD, fontSize: 12, fontWeight: 700, color: COLORS.muted, marginBottom: 8 }}>📅 Rango de fechas</div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 11, color: COLORS.mutedLighter, marginBottom: 4 }}>Desde</div>
+                  <input
+                    type="date"
+                    value={filters.dateFrom ? filters.dateFrom.slice(0, 10) : ''}
+                    onChange={e =>
+                      onChange({ ...filters, dateFrom: e.target.value ? new Date(e.target.value + 'T00:00:00').toISOString() : null })
+                    }
+                    style={{
+                      width: '100%', padding: '8px 10px', borderRadius: 8,
+                      border: border(1.5), fontSize: 13, outline: 'none', backgroundColor: COLORS.card,
+                    }}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 11, color: COLORS.mutedLighter, marginBottom: 4 }}>Hasta</div>
+                  <input
+                    type="date"
+                    value={filters.dateTo ? filters.dateTo.slice(0, 10) : ''}
+                    onChange={e =>
+                      onChange({ ...filters, dateTo: e.target.value ? new Date(e.target.value + 'T23:59:59').toISOString() : null })
+                    }
+                    style={{
+                      width: '100%', padding: '8px 10px', borderRadius: 8,
+                      border: border(1.5), fontSize: 13, outline: 'none', backgroundColor: COLORS.card,
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
 
-              {showDateFrom && (
-                <DateTimePicker
-                  value={filters.dateFrom ? new Date(filters.dateFrom) : new Date()}
-                  mode="date"
-                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                  onChange={(_, date) => {
-                    setShowDateFrom(false);
-                    if (date) onChange({ ...filters, dateFrom: date.toISOString() });
-                  }}
-                />
-              )}
-
-              {showDateTo && (
-                <DateTimePicker
-                  value={filters.dateTo ? new Date(filters.dateTo) : new Date()}
-                  mode="date"
-                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                  onChange={(_, date) => {
-                    setShowDateTo(false);
-                    if (date) onChange({ ...filters, dateTo: date.toISOString() });
-                  }}
-                />
-              )}
-
-              <Text style={styles.sectionLabel}>🗂️ Categoría</Text>
-              <View style={styles.chipRow}>
+            {/* Categorías */}
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontFamily: FONT_HEAD, fontSize: 12, fontWeight: 700, color: COLORS.muted, marginBottom: 8 }}>📂 Categoría</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                 {CATEGORIES.map(cat => (
-                  <TouchableOpacity
+                  <button
                     key={cat.value}
-                    style={[styles.chip, filters.category === cat.value && styles.chipActive]}
-                    onPress={() => onChange({ ...filters, category: cat.value })}
+                    onClick={() => onChange({ ...filters, category: cat.value })}
+                    style={{
+                      padding: '7px 12px', borderRadius: 20, fontSize: 12.5, cursor: 'pointer',
+                      border: border(2),
+                      backgroundColor: filters.category === cat.value ? COLORS.ink : COLORS.card,
+                      color: filters.category === cat.value ? COLORS.yellow : COLORS.ink,
+                      fontWeight: filters.category === cat.value ? 700 : 500,
+                    }}
                   >
-                    <Text style={[styles.chipText, filters.category === cat.value && styles.chipTextActive]}>
-                      {cat.label}
-                    </Text>
-                  </TouchableOpacity>
+                    {cat.label}
+                  </button>
                 ))}
-              </View>
+              </div>
+            </div>
 
-              <Text style={styles.sectionLabel}>👤 Persona</Text>
-              <View style={styles.chipRow}>
-                <TouchableOpacity
-                  style={[styles.chip, filters.userId === 'todos' && styles.chipActive]}
-                  onPress={() => onChange({ ...filters, userId: 'todos' })}
+            {/* Persona */}
+            <div style={{ marginBottom: 24 }}>
+              <div style={{ fontFamily: FONT_HEAD, fontSize: 12, fontWeight: 700, color: COLORS.muted, marginBottom: 8 }}>👤 Persona</div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <button
+                  onClick={() => onChange({ ...filters, userId: 'todos' })}
+                  style={{
+                    flex: 1, padding: 10, borderRadius: 10, cursor: 'pointer', fontSize: 13.5,
+                    border: border(2),
+                    backgroundColor: filters.userId === 'todos' ? COLORS.ink : COLORS.card,
+                    color: filters.userId === 'todos' ? COLORS.yellow : COLORS.ink,
+                    fontWeight: filters.userId === 'todos' ? 700 : 500,
+                  }}
                 >
-                  <Text style={[styles.chipText, filters.userId === 'todos' && styles.chipTextActive]}>Todos</Text>
-                </TouchableOpacity>
+                  Todos
+                </button>
                 {users.map(user => (
-                  <TouchableOpacity
+                  <button
                     key={user.id}
-                    style={[styles.chip, filters.userId === user.id && { backgroundColor: user.color, borderColor: user.color }]}
-                    onPress={() => onChange({ ...filters, userId: user.id })}
+                    onClick={() => onChange({ ...filters, userId: user.id })}
+                    style={{
+                      flex: 1, padding: 10, borderRadius: 10, cursor: 'pointer', fontSize: 13,
+                      border: border(2),
+                      backgroundColor: filters.userId === user.id ? user.color : COLORS.card,
+                      color: filters.userId === user.id ? '#fff' : COLORS.ink,
+                      fontWeight: 600,
+                    }}
                   >
-                    <Text style={[styles.chipText, filters.userId === user.id && styles.chipTextActive]}>
-                      {user.name}
-                    </Text>
-                  </TouchableOpacity>
+                    {user.name}
+                  </button>
                 ))}
-              </View>
-            </ScrollView>
+              </div>
+            </div>
 
-            <View style={styles.modalFooter}>
-              <TouchableOpacity style={styles.resetBtn} onPress={resetFilters}>
-                <Text style={styles.resetBtnText}>Limpiar filtros</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.applyBtn} onPress={() => setShowModal(false)}>
-                <Text style={styles.applyBtnText}>Aplicar</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-    </View>
+            {/* Acciones */}
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                onClick={resetFilters}
+                style={{
+                  flex: 1, padding: 14, borderRadius: 10, fontSize: 14, cursor: 'pointer',
+                  border: border(2), backgroundColor: COLORS.card, color: COLORS.ink, fontWeight: 600,
+                }}
+              >
+                Limpiar
+              </button>
+              <button
+                onClick={() => setShowModal(false)}
+                style={{
+                  flex: 2, padding: 14, borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer',
+                  border: border(2.5), backgroundColor: COLORS.ink, color: COLORS.yellow, boxShadow: shadow(3),
+                }}
+              >
+                Aplicar filtros
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
-
-const styles = StyleSheet.create({
-  searchRow: { flexDirection: 'row', gap: 8, padding: 12 },
-  searchInput: {
-    flex: 1, backgroundColor: '#fff', borderRadius: 8, padding: 10,
-    fontSize: 14, borderWidth: 1, borderColor: '#ddd',
-  },
-  filterBtn: {
-    backgroundColor: '#6200ee', borderRadius: 8,
-    paddingHorizontal: 14, justifyContent: 'center',
-  },
-  filterBtnText: { color: '#fff', fontSize: 14, fontWeight: 'bold' },
-  modalBg: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  modalContent: {
-    backgroundColor: '#fff', borderTopLeftRadius: 20,
-    borderTopRightRadius: 20, padding: 20, maxHeight: '85%',
-  },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 },
-  modalTitle: { fontSize: 18, fontWeight: 'bold', color: '#333' },
-  closeBtn: { fontSize: 18, color: '#999' },
-  sectionLabel: { fontSize: 14, fontWeight: 'bold', color: '#333', marginTop: 16, marginBottom: 8 },
-  dateRow: { flexDirection: 'row', gap: 8 },
-  dateBtn: {
-    flex: 1, padding: 10, backgroundColor: '#f5f5f5',
-    borderRadius: 8, borderWidth: 1, borderColor: '#ddd',
-  },
-  dateBtnText: { fontSize: 12, color: '#333', textAlign: 'center' },
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: {
-    paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20,
-    borderWidth: 1, borderColor: '#ddd', backgroundColor: '#fff',
-  },
-  chipActive: { backgroundColor: '#6200ee', borderColor: '#6200ee' },
-  chipText: { fontSize: 13, color: '#333' },
-  chipTextActive: { color: '#fff', fontWeight: 'bold' },
-  modalFooter: { flexDirection: 'row', gap: 10, marginTop: 20 },
-  resetBtn: {
-    flex: 1, padding: 14, borderRadius: 8,
-    borderWidth: 1, borderColor: '#6200ee', alignItems: 'center',
-  },
-  resetBtnText: { color: '#6200ee', fontWeight: 'bold' },
-  applyBtn: { flex: 1, padding: 14, borderRadius: 8, backgroundColor: '#6200ee', alignItems: 'center' },
-  applyBtnText: { color: '#fff', fontWeight: 'bold' },
-});

@@ -1,60 +1,77 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
-import { RootState } from '../store';
-import { updateUsers } from '../store/expenseSlice';
-import { updateUserName } from '../services/storage';
+import { AppDispatch, RootState } from '../store';
+import { saveUsers } from '../store/expenseSlice';
+import { COLORS, FONT_HEAD, border, shadow } from '../theme';
 
 export default function SettingsScreen() {
-  const dispatch = useDispatch();
+  const dispatch = useDispatch<AppDispatch>();
   const { users } = useSelector((state: RootState) => state.expenses);
   const [names, setNames] = useState<Record<string, string>>(
     Object.fromEntries(users.map(u => [u.id, u.name]))
   );
+  const [saved, setSaved] = useState(false);
 
   const handleSave = () => {
-    users.forEach(user => {
-      if (names[user.id] && names[user.id] !== user.name) {
-        updateUserName(user.id, names[user.id]);
-      }
-    });
-    dispatch(updateUsers(users.map(u => ({ ...u, name: names[u.id] ?? u.name }))));
-    Alert.alert('✅ Nombres actualizados');
+    dispatch(saveUsers(users.map(u => ({ ...u, name: names[u.id] ?? u.name }))));
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2500);
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Nombres de usuarios</Text>
+    <div style={{ padding: 24, backgroundColor: COLORS.bg, height: '100%', overflowY: 'auto' }}>
+      <div style={{ fontFamily: FONT_HEAD, fontSize: 19, fontWeight: 700, marginBottom: 8, color: COLORS.ink }}>
+        ⚙️ Ajustes
+      </div>
+      <div style={{ fontSize: 13, color: COLORS.mutedLighter, marginBottom: 24 }}>
+        Personaliza los nombres de cada persona
+      </div>
+
       {users.map(user => (
-        <View key={user.id} style={styles.row}>
-          <View style={[styles.dot, { backgroundColor: user.color }]} />
-          <TextInput
-            style={styles.input}
-            value={names[user.id]}
-            onChangeText={text => setNames(prev => ({ ...prev, [user.id]: text }))}
+        <div key={user.id} style={{
+          display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14,
+          backgroundColor: COLORS.card, borderRadius: 12, padding: '12px 14px',
+          border: border(2), boxShadow: shadow(3),
+        }}>
+          <div style={{
+            width: 18, height: 18, borderRadius: '50%',
+            backgroundColor: user.color, border: `1.5px solid ${COLORS.ink}`, flexShrink: 0,
+          }} />
+          <input
+            type="text"
+            value={names[user.id] ?? ''}
+            onChange={e => setNames(prev => ({ ...prev, [user.id]: e.target.value }))}
             placeholder="Nombre"
+            style={{
+              flex: 1, padding: '10px 0', border: 'none', outline: 'none',
+              fontSize: 16, backgroundColor: 'transparent', color: COLORS.ink,
+            }}
           />
-        </View>
+        </div>
       ))}
-      <TouchableOpacity style={styles.btn} onPress={handleSave}>
-        <Text style={styles.btnText}>Guardar cambios</Text>
-      </TouchableOpacity>
-    </View>
+
+      <button
+        onClick={handleSave}
+        style={{
+          width: '100%', marginTop: 8, padding: 16, borderRadius: 12,
+          backgroundColor: saved ? COLORS.teal : COLORS.ink,
+          color: saved ? '#fff' : COLORS.yellow, fontFamily: FONT_HEAD, fontWeight: 700, fontSize: 15,
+          border: border(2.5), cursor: 'pointer', boxShadow: shadow(3),
+          transition: 'background-color 0.25s',
+        }}
+      >
+        {saved ? '✅ Guardado' : 'Guardar cambios'}
+      </button>
+
+      <div style={{ marginTop: 36, padding: 16, backgroundColor: COLORS.card, borderRadius: 12, border: border(2), boxShadow: shadow(3) }}>
+        <div style={{ fontFamily: FONT_HEAD, fontSize: 13, fontWeight: 700, color: COLORS.ink, marginBottom: 6 }}>
+          ℹ️ Sobre la app
+        </div>
+        <div style={{ fontSize: 12, color: COLORS.mutedLighter, lineHeight: 1.6 }}>
+          Los gastos, el menú y el recetario se sincronizan entre vuestros dispositivos (las fotos de los tickets se quedan solo en el que las tomó).<br />
+          Usa <strong>Exportar CSV</strong> para hacer copias de seguridad.
+        </div>
+      </div>
+    </div>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, padding: 24, backgroundColor: '#f5f5f5' },
-  title: { fontSize: 18, fontWeight: 'bold', marginBottom: 20, color: '#333' },
-  row: { flexDirection: 'row', alignItems: 'center', marginBottom: 12, gap: 10 },
-  dot: { width: 16, height: 16, borderRadius: 8 },
-  input: {
-    flex: 1, backgroundColor: '#fff', borderRadius: 8, padding: 12,
-    fontSize: 16, borderWidth: 1, borderColor: '#ddd',
-  },
-  btn: {
-    backgroundColor: '#6200ee', padding: 16, borderRadius: 8,
-    alignItems: 'center', marginTop: 20,
-  },
-  btnText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
-});

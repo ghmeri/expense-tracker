@@ -8,6 +8,13 @@ export type Category =
   | 'tecnologia'
   | 'otros';
 
+export interface LineItem {
+  name: string;
+  quantity?: number;
+  unitPrice?: number;
+  totalPrice: number;
+}
+
 export interface Expense {
   id: string;
   amount: number;
@@ -17,6 +24,7 @@ export interface Expense {
   imageUri?: string;
   userId: string;
   createdAt: string;
+  lineItems?: LineItem[];
 }
 
 export interface User {
@@ -38,4 +46,70 @@ export interface FilterState {
   dateTo: string | null;
   category: Category | 'todas';
   userId: string | 'todos';
+}
+
+export type DietTag = 'vegetariano' | 'con_carne';
+
+export type MealSlot = 'comida' | 'cena';
+
+export type RowType = 'compartido' | 'separado';
+
+export interface MenuRow {
+  id: string;
+  type: RowType;
+  shared: string;    // usado cuando type === 'compartido'
+  personF: string;   // usado cuando type === 'separado' (Maria F)
+  personN: string;   // usado cuando type === 'separado' (Maria N)
+}
+
+export type WeekDay = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
+
+export type WeeklyMenu = {
+  [day in WeekDay]?: {
+    comida?: MenuRow[];
+    cena?: MenuRow[];
+  };
+};
+
+export interface WeekMenuDocument {
+  weekStart: string;
+  menu: WeeklyMenu;
+  updatedAt: string;
+}
+
+export interface RecentPurchaseItem {
+  name: string;
+  lastSeenAt: string;
+}
+
+export interface MealIdea {
+  id: string;
+  name: string;
+  dietTag: DietTag;
+}
+
+export interface MenuState {
+  currentWeekStart: string;
+  weekMenu: WeeklyMenu;
+  recentPurchases: RecentPurchaseItem[];
+  customIdeas: RecentPurchaseItem[];
+  loading: boolean;
+  error: string | null;
+}
+
+export interface Recipe {
+  id: string;
+  name: string;
+  dietTag: DietTag;
+  rating: number; // 0-5
+  notes: string;
+  ingredients: string[];
+  time: string;       // texto libre, ej "30 min"
+  photoUri?: string;  // foto comprimida en base64, opcional
+}
+
+export interface RecipeState {
+  recipes: Recipe[];
+  loading: boolean;
+  error: string | null;
 }
