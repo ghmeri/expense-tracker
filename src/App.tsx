@@ -56,7 +56,9 @@ function AppContent() {
         margin: '0 auto', backgroundColor: COLORS.bg,
         position: 'relative', boxShadow: '0 0 40px rgba(38,32,26,0.18)',
       }}>
-        <QuickAddScreen initialKind={quickKind} onOpenApp={exitQuick} />
+        <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+          <QuickAddScreen initialKind={quickKind} onOpenApp={exitQuick} />
+        </div>
       </div>
     );
   }
@@ -69,8 +71,10 @@ function AppContent() {
         margin: '0 auto', backgroundColor: COLORS.bg,
         position: 'relative', boxShadow: '0 0 40px rgba(38,32,26,0.18)',
       }}>
-        {/* key cambia tras cada guardado: remonta la pantalla y vuelve al paso de captura */}
-        <AddExpenseScreen key={captureRound} onSave={() => setCaptureRound(n => n + 1)} />
+        <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+          {/* key cambia tras cada guardado: remonta la pantalla y vuelve al paso de captura */}
+          <AddExpenseScreen key={captureRound} onSave={() => setCaptureRound(n => n + 1)} />
+        </div>
       </div>
     );
   }

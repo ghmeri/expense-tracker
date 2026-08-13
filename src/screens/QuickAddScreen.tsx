@@ -63,8 +63,8 @@ export default function QuickAddScreen({ initialKind, onOpenApp }: Props) {
   };
 
   return (
-    <div style={{ overflowY: 'auto', height: '100%', backgroundColor: COLORS.bg }}>
-      <div style={{ maxWidth: 480, margin: '0 auto', padding: '28px 20px 48px' }}>
+    <div style={{ overflowY: 'auto', overflowX: 'hidden', height: '100%', backgroundColor: COLORS.bg }}>
+      <div style={{ maxWidth: 480, width: '100%', boxSizing: 'border-box', margin: '0 auto', padding: '28px 20px 48px' }}>
 
         <div style={{ marginBottom: 20 }}>
           <h1 style={{ fontFamily: FONT_HEAD, fontSize: 22, fontWeight: 700, color: COLORS.ink }}>⚡ Añadir rápido</h1>
@@ -98,19 +98,19 @@ export default function QuickAddScreen({ initialKind, onOpenApp }: Props) {
           <label style={{ fontFamily: FONT_HEAD, fontSize: 11, fontWeight: 700, color: COLORS.muted, display: 'block', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
             {kind === 'gasto' ? '💰 Importe gastado' : '💰 Importe recibido'}
           </label>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
             <input
               type="number" inputMode="decimal" placeholder="0.00" value={amount} autoFocus
               onChange={e => { setAmount(e.target.value); setAmountErr(''); }}
               onKeyDown={e => e.key === 'Enter' && handleSave()}
               style={{
-                flex: 1, padding: '12px 16px', borderRadius: 12,
+                flex: 1, minWidth: 0, width: '100%', padding: '12px 16px', borderRadius: 12,
                 border: border(2.5, amountErr ? COLORS.danger : COLORS.ink),
                 fontFamily: FONT_HEAD, fontSize: 28, fontWeight: 700, color: COLORS.ink,
                 outline: 'none', backgroundColor: amount ? COLORS.yellow : COLORS.cardAlt, textAlign: 'right',
               }}
             />
-            <span style={{ fontFamily: FONT_HEAD, fontSize: 28, fontWeight: 700, color: COLORS.ink }}>€</span>
+            <span style={{ fontFamily: FONT_HEAD, fontSize: 28, fontWeight: 700, color: COLORS.ink, flexShrink: 0 }}>€</span>
           </div>
           {amountErr && <div style={{ color: COLORS.danger, fontSize: 13, marginTop: 8 }}>{amountErr}</div>}
         </div>
