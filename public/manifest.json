@@ -14,5 +14,28 @@
       "type": "image/svg+xml",
       "purpose": "any maskable"
     }
+  ],
+  "shortcuts": [
+    {
+      "name": "Nuevo gasto",
+      "short_name": "Gasto",
+      "description": "Añadir un gasto rápido",
+      "url": "/?quick=gasto",
+      "icons": [{ "src": "icon-gasto.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Nuevo ingreso",
+      "short_name": "Ingreso",
+      "description": "Añadir un ingreso rápido",
+      "url": "/?quick=ingreso",
+      "icons": [{ "src": "icon-ingreso.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Gasto con foto",
+      "short_name": "Foto ticket",
+      "description": "Escanear un ticket y añadir el gasto",
+      "url": "/?quick=foto",
+      "icons": [{ "src": "icon-foto.png", "sizes": "192x192", "type": "image/png" }]
+    }
   ]
 }

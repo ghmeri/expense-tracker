@@ -1,16 +1,25 @@
 import React, { useState } from 'react';
-import { Provider } from 'react-redux';
+import { Provider, useDispatch } from 'react-redux';
 import { store } from './store';
 import ErrorBoundary from './components/ErrorBoundary';
 import HomeScreen from './screens/HomeScreen';
 import TicketsScreen from './screens/TicketsScreen';
 import AddExpenseScreen from './screens/AddExpenseScreen';
+import QuickAddScreen from './screens/QuickAddScreen';
 import SummaryScreen from './screens/SummaryScreen';
 import MenuScreen from './screens/MenuScreen';
 import RecipesScreen from './screens/RecipesScreen';
 import SettingsScreen from './screens/SettingsScreen';
+import { loadData } from './store/expenseSlice';
+import { AppDispatch } from './store';
 import { COLORS, FONT_HEAD, shadow } from './theme';
 import './App.css';
+
+/** Lee ?quick=gasto|ingreso|foto de la URL de arranque (accesos directos de la PWA). */
+function getQuickKind(): 'gasto' | 'ingreso' | 'foto' | null {
+  const value = new URLSearchParams(window.location.search).get('quick');
+  return value === 'gasto' || value === 'ingreso' || value === 'foto' ? value : null;
+}
 
 type Tab = 'home' | 'tickets' | 'add' | 'summary' | 'menu' | 'recipes' | 'settings';
 
@@ -26,6 +35,45 @@ const TABS: { id: Tab; icon: string; label: string }[] = [
 
 function AppContent() {
   const [tab, setTab] = useState<Tab>('home');
+  const [quickKind, setQuickKind] = useState(getQuickKind);
+  const [captureRound, setCaptureRound] = useState(0);
+  const dispatch = useDispatch<AppDispatch>();
+
+  // El acceso rápido necesita los datos (usuarios) cargados igual que HomeScreen.
+  React.useEffect(() => { if (quickKind) dispatch(loadData()); }, []);
+
+  const exitQuick = () => {
+    window.history.replaceState(null, '', window.location.pathname);
+    setQuickKind(null);
+    setTab('home');
+  };
+
+  if (quickKind === 'gasto' || quickKind === 'ingreso') {
+    return (
+      <div className="app-shell" style={{
+        display: 'flex', flexDirection: 'column',
+        height: '100%',
+        margin: '0 auto', backgroundColor: COLORS.bg,
+        position: 'relative', boxShadow: '0 0 40px rgba(38,32,26,0.18)',
+      }}>
+        <QuickAddScreen initialKind={quickKind} onOpenApp={exitQuick} />
+      </div>
+    );
+  }
+
+  if (quickKind === 'foto') {
+    return (
+      <div className="app-shell" style={{
+        display: 'flex', flexDirection: 'column',
+        height: '100%',
+        margin: '0 auto', backgroundColor: COLORS.bg,
+        position: 'relative', boxShadow: '0 0 40px rgba(38,32,26,0.18)',
+      }}>
+        {/* key cambia tras cada guardado: remonta la pantalla y vuelve al paso de captura */}
+        <AddExpenseScreen key={captureRound} onSave={() => setCaptureRound(n => n + 1)} />
+      </div>
+    );
+  }
 
   return (
     <div className="app-shell" style={{
