@@ -299,12 +299,14 @@ export default function AddExpenseScreen({ onSave }: Props) {
 
             {/* Columna imagen */}
             {imageUri && (
-              <div style={{ flex: '1 1 280px', minWidth: 240, position: 'sticky', top: 0 }}>
+              <div className="review-image-col" style={{ flex: '1 1 280px', minWidth: 240 }}>
                 <div style={{ backgroundColor: COLORS.card, borderRadius: 16, padding: 16, border: border(2), boxShadow: shadow(4) }}>
                   <div style={{ fontFamily: FONT_HEAD, fontSize: 11, fontWeight: 700, color: COLORS.muted, marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                     🧾 Ticket original
                   </div>
-                  <img src={imageUri} alt="ticket" style={{ width: '100%', borderRadius: 10, display: 'block', border: border(1.5) }} />
+                  <div className="review-image-frame" style={{ maxHeight: 320, overflow: 'hidden', borderRadius: 10, border: border(1.5) }}>
+                    <img src={imageUri} alt="ticket" style={{ width: '100%', maxHeight: 320, objectFit: 'contain', display: 'block' }} />
+                  </div>
                   <button onClick={resetCapture} style={{ width: '100%', marginTop: 12, padding: '10px', borderRadius: 8, border: border(1.5), backgroundColor: COLORS.cardAlt, color: COLORS.muted, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
                     🔄 Cambiar foto
                   </button>

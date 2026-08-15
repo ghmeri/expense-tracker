@@ -122,3 +122,11 @@ button { cursor: pointer; }
   background: #eff6ff !important;
   transform: scale(1.01);
 }
+
+/* ── Revisión de ticket: en móvil la foto no debe tapar el análisis ── */
+@media (max-width: 600px) {
+  .review-image-frame,
+  .review-image-frame img {
+    max-height: 200px !important;
+  }
+}
