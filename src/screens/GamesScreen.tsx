@@ -28,11 +28,11 @@ export default function GamesScreen() {
     if (users.length > 0 && !winnerId) setWinnerId(users[0].id);
   }, [users]);
 
-  // ── Marcador general acumulado ──
+  // ── Marcador general acumulado (orden fijo, sin reordenar) ──
   const scoreboard = users.map(user => ({
     ...user,
     wins: results.filter(r => r.winnerId === user.id).length,
-  })).sort((a, b) => b.wins - a.wins);
+  }));
 
   const handleAdd = async () => {
     if (!game.trim() || !winnerId) return;
@@ -110,9 +110,8 @@ export default function GamesScreen() {
           {/* Paneles de jugadores */}
           <div style={{ display: 'flex' }}>
             {scoreboard.map((user, i) => {
-              const isLeader = i === 0 && user.wins > 0 && scoreboard.length > 1
-                ? user.wins > scoreboard[1].wins
-                : i === 0 && user.wins > 0;
+              const maxWins = Math.max(...scoreboard.map(u => u.wins));
+              const isLeader = user.wins > 0 && user.wins === maxWins && scoreboard.filter(u => u.wins === maxWins).length === 1;
               return (
                 <div key={user.id} style={{
                   flex: 1,
