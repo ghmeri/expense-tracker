@@ -90,42 +90,80 @@ export default function GamesScreen() {
 
       <div style={{ padding: '20px 16px 80px', display: 'flex', flexDirection: 'column', gap: 20 }}>
 
-        {/* ── Marcador general ── */}
-        <div style={cardStyle({ padding: '16px 20px' })}>
-          <div style={{ fontFamily: FONT_HEAD, fontWeight: 700, fontSize: 16, marginBottom: 14 }}>
+        {/* ── Marcador deportivo ── */}
+        <div style={{
+          backgroundColor: '#1E2227',
+          border: border(),
+          borderRadius: 16,
+          boxShadow: shadow(4),
+          overflow: 'hidden',
+        }}>
+          {/* Título */}
+          <div style={{
+            textAlign: 'center', padding: '10px 0 8px',
+            fontFamily: FONT_HEAD, fontWeight: 700, fontSize: 11,
+            letterSpacing: 2, color: '#6B7280', textTransform: 'uppercase',
+          }}>
             🏆 Marcador general
           </div>
-          {scoreboard.length === 0 ? (
-            <div style={{ color: COLORS.muted, fontSize: 14 }}>Sin resultados todavía.</div>
-          ) : (
-            scoreboard.map((user, i) => (
-              <div key={user.id} style={{
-                display: 'flex', alignItems: 'center', gap: 12,
-                padding: '10px 0',
-                borderBottom: i < scoreboard.length - 1 ? border(1.5, COLORS.dashed) : 'none',
-              }}>
-                <span style={{ fontSize: 22, minWidth: 28, textAlign: 'center' }}>
-                  {i === 0 && user.wins > 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : ''}
-                </span>
-                <div style={{
-                  width: 10, height: 10, borderRadius: '50%',
-                  backgroundColor: user.color, border: border(1.5),
-                  flexShrink: 0,
-                }} />
-                <span style={{ fontFamily: FONT_HEAD, fontWeight: 600, fontSize: 15, flex: 1 }}>
-                  {user.name}
-                </span>
-                <span style={{
-                  fontFamily: FONT_HEAD, fontWeight: 700, fontSize: 18,
-                  color: i === 0 && user.wins > 0 ? COLORS.orange : COLORS.ink,
+
+          {/* Paneles de jugadores */}
+          <div style={{ display: 'flex' }}>
+            {scoreboard.map((user, i) => {
+              const isLeader = i === 0 && user.wins > 0 && scoreboard.length > 1
+                ? user.wins > scoreboard[1].wins
+                : i === 0 && user.wins > 0;
+              return (
+                <div key={user.id} style={{
+                  flex: 1,
+                  borderRight: i < scoreboard.length - 1 ? '2px solid #111' : 'none',
+                  display: 'flex', flexDirection: 'column', alignItems: 'center',
                 }}>
-                  {user.wins} <span style={{ fontSize: 12, fontWeight: 400, color: COLORS.muted }}>
+                  {/* Franja de color del jugador */}
+                  <div style={{
+                    width: '100%', height: 6,
+                    backgroundColor: user.color,
+                  }} />
+                  {/* Nombre */}
+                  <div style={{
+                    fontFamily: FONT_HEAD, fontWeight: 700, fontSize: 12,
+                    color: '#CBD5E1', letterSpacing: 1, textTransform: 'uppercase',
+                    padding: '10px 8px 4px', textAlign: 'center',
+                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                    maxWidth: '100%',
+                  }}>
+                    {user.name}
+                  </div>
+                  {/* Número grande */}
+                  <div style={{
+                    fontFamily: "'Space Grotesk', 'Arial Black', sans-serif",
+                    fontWeight: 800,
+                    fontSize: 'clamp(52px, 14vw, 88px)',
+                    lineHeight: 1,
+                    color: isLeader ? COLORS.yellow : '#E2E8F0',
+                    padding: '8px 12px 18px',
+                    textShadow: isLeader ? `0 0 30px rgba(255,211,92,0.4)` : 'none',
+                    letterSpacing: -2,
+                  }}>
+                    {user.wins}
+                  </div>
+                  {/* Etiqueta victorias */}
+                  <div style={{
+                    fontFamily: FONT_HEAD, fontSize: 10, fontWeight: 600,
+                    color: '#4B5563', letterSpacing: 1, textTransform: 'uppercase',
+                    paddingBottom: 14,
+                  }}>
                     {user.wins === 1 ? 'victoria' : 'victorias'}
-                  </span>
-                </span>
+                  </div>
+                </div>
+              );
+            })}
+            {scoreboard.length === 0 && (
+              <div style={{ color: '#6B7280', fontSize: 13, fontFamily: FONT_HEAD, padding: '24px', textAlign: 'center', width: '100%' }}>
+                Sin partidas todavía.
               </div>
-            ))
-          )}
+            )}
+          </div>
         </div>
 
         {/* ── Historial de partidas ── */}
