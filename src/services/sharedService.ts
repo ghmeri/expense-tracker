@@ -1,4 +1,4 @@
-import { Expense, Recipe, RecentPurchaseItem, User, WeekMenuDocument, WeeklyMenu } from '../types';
+import { Expense, GameResult, Recipe, RecentPurchaseItem, User, WeekMenuDocument, WeeklyMenu } from '../types';
 
 export const registerHousehold = async (code: string): Promise<void> => {
   await fetch('/api/household', {
@@ -121,5 +121,21 @@ export const saveSharedUsers = async (code: string, users: User[]): Promise<User
     body: JSON.stringify({ code, users }),
   });
   if (!res.ok) throw new Error('No se pudieron guardar los usuarios compartidos');
+  return res.json();
+};
+
+export const getGames = async (code: string): Promise<GameResult[]> => {
+  const res = await fetch(`/api/household-games?code=${code}`);
+  if (!res.ok) throw new Error('No se pudo cargar el historial de juegos');
+  return res.json();
+};
+
+export const saveGames = async (code: string, results: GameResult[]): Promise<GameResult[]> => {
+  const res = await fetch('/api/household-games', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code, results }),
+  });
+  if (!res.ok) throw new Error('No se pudo guardar el historial de juegos');
   return res.json();
 };

@@ -4,7 +4,7 @@ import { AppDispatch, RootState } from '../store';
 import { loadData } from '../store/expenseSlice';
 import { COLORS, FONT_HEAD, shadow, border } from '../theme';
 
-type Section = 'tickets' | 'add' | 'summary' | 'menu' | 'recipes' | 'settings';
+type Section = 'tickets' | 'add' | 'summary' | 'menu' | 'recipes' | 'games' | 'settings';
 
 interface Props { onNavigate: (section: Section) => void; }
 
@@ -14,6 +14,7 @@ const SECTIONS: { id: Section; icon: string; title: string; desc: string }[] = [
   { id: 'summary', icon: '📊', title: 'Resumen', desc: 'Estadísticas por categoría, periodo y persona.' },
   { id: 'menu', icon: '🍽️', title: 'Menú semanal', desc: 'Planifica comidas y cenas de lunes a domingo.' },
   { id: 'recipes', icon: '📖', title: 'Recetario', desc: 'Guarda vuestras recetas con tipo y puntuación.' },
+  { id: 'games', icon: '🎲', title: 'Juegos', desc: 'Contador de victorias y historial de partidas.' },
   { id: 'settings', icon: '⚙️', title: 'Ajustes', desc: 'Gestiona los nombres de los usuarios.' },
 ];
 

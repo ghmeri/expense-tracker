@@ -113,3 +113,17 @@ export interface RecipeState {
   loading: boolean;
   error: string | null;
 }
+
+export interface GameResult {
+  id: string;
+  game: string;
+  winnerId: string;
+  date: string; // ISO date string YYYY-MM-DD
+  createdAt: string;
+}
+
+export interface GamesState {
+  results: GameResult[];
+  loading: boolean;
+  error: string | null;
+}

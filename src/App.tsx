@@ -10,6 +10,7 @@ import SummaryScreen from './screens/SummaryScreen';
 import MenuScreen from './screens/MenuScreen';
 import RecipesScreen from './screens/RecipesScreen';
 import SettingsScreen from './screens/SettingsScreen';
+import GamesScreen from './screens/GamesScreen';
 import { loadData } from './store/expenseSlice';
 import { AppDispatch } from './store';
 import { COLORS, FONT_HEAD, shadow } from './theme';
@@ -21,7 +22,7 @@ function getQuickKind(): 'gasto' | 'ingreso' | 'foto' | null {
   return value === 'gasto' || value === 'ingreso' || value === 'foto' ? value : null;
 }
 
-type Tab = 'home' | 'tickets' | 'add' | 'summary' | 'menu' | 'recipes' | 'settings';
+type Tab = 'home' | 'tickets' | 'add' | 'summary' | 'menu' | 'recipes' | 'games' | 'settings';
 
 const TABS: { id: Tab; icon: string; label: string }[] = [
   { id: 'home', icon: '🏠', label: 'Inicio' },
@@ -30,6 +31,7 @@ const TABS: { id: Tab; icon: string; label: string }[] = [
   { id: 'summary', icon: '📊', label: 'Resumen' },
   { id: 'menu', icon: '🍽️', label: 'Menú' },
   { id: 'recipes', icon: '📖', label: 'Recetas' },
+  { id: 'games', icon: '🎲', label: 'Juegos' },
   { id: 'settings', icon: '⚙️', label: 'Ajustes' },
 ];
 
@@ -95,6 +97,7 @@ function AppContent() {
           {tab === 'summary' && <SummaryScreen />}
           {tab === 'menu' && <MenuScreen />}
           {tab === 'recipes' && <RecipesScreen />}
+          {tab === 'games' && <GamesScreen />}
           {tab === 'settings' && <SettingsScreen />}
         </ErrorBoundary>
       </div>
