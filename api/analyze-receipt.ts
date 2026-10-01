@@ -1,5 +1,4 @@
-// Vercel Edge Function — analiza un ticket con OpenRouter (modelos de visión gratuitos)
-export const config = { runtime: 'edge' };
+// Vercel Function (Node.js) — analiza un ticket con OpenRouter (modelos de visión gratuitos)
 
 const CORS = { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' };
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
@@ -7,10 +6,58 @@ const VISION_MODELS = [
   'google/gemma-4-31b-it:free',                // multimodal Google
   'google/gemma-4-26b-a4b-it:free',            // multimodal Google
   'qwen/qwen3.8-27b:free',                     // multimodal Qwen
-  'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free', // multimodal NVIDIA
 ];
-// Las Edge Functions de Vercel deben empezar a responder en 25 s
-const DEADLINE_MS = 23_000;
+// Runtime Node.js (no Edge): sin el límite de 25 s para empezar a responder
+const TIMEOUT_MS = 50_000;
+
+type Parsed = { storeName?: string | null; total?: number; items?: { name?: string; totalPrice?: number }[] };
+
+class AuthError extends Error {}
+
+/** Pide el análisis a un modelo; lanza si falla o no devuelve JSON utilizable */
+async function askModel(model: string, image: string, apiKey: string, signal: AbortSignal): Promise<Parsed> {
+  let res: Response;
+  try {
+    res = await fetch(OPENROUTER_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'image_url', image_url: { url: image } },
+            { type: 'text', text: PROMPT },
+          ],
+        }],
+        temperature: 0,
+        max_tokens: 2000,
+      }),
+      signal,
+    });
+  } catch (err) {
+    throw new Error(`${model}: ${err instanceof Error && err.name === 'TimeoutError' ? 'timeout' : err instanceof Error ? err.message : 'error de red'}`);
+  }
+  if (res.status === 401 || res.status === 402) {
+    throw new AuthError(`Error OpenRouter ${res.status}: revisa OPENROUTER_API_KEY. ${await res.text()}`);
+  }
+  if (!res.ok) throw new Error(`${model} ${res.status}: ${(await res.text()).slice(0, 150)}`);
+
+  // OpenRouter puede devolver 200 con un error del proveedor o contenido vacío
+  const data = await res.json() as {
+    choices?: { message?: { content?: string | null } }[];
+    error?: { message?: string };
+  };
+  const content = data.choices?.[0]?.message?.content ?? '';
+  // Extraer el bloque JSON aunque haya texto antes/después
+  const jsonMatch = content.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) throw new Error(`${model}: ${data.error?.message ?? 'respuesta sin JSON'}`);
+  try { return JSON.parse(jsonMatch[0]); }
+  catch { throw new Error(`${model}: JSON mal formado`); }
+}
 
 const PROMPT = `Analiza esta imagen de un ticket de compra y extrae los datos.
 Devuelve ÚNICAMENTE un objeto JSON válido (sin markdown, sin texto extra):
@@ -32,7 +79,7 @@ Reglas ESTRICTAS:
 - El ticket puede estar en español, catalán u otro idioma.
 - total = importe final pagado (línea TOTAL, ya con descuentos aplicados).`;
 
-export default async function handler(req: Request): Promise<Response> {
+async function handler(req: Request): Promise<Response> {
   if (req.method === 'OPTIONS') return new Response(null, { status: 200, headers: CORS });
   if (req.method !== 'POST') return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405, headers: CORS });
 
@@ -58,58 +105,21 @@ export default async function handler(req: Request): Promise<Response> {
   }
 
   try {
-    const deadline = Date.now() + DEADLINE_MS;
-    let parsed: { storeName?: string | null; total?: number; items?: { name?: string; totalPrice?: number }[] } | null = null;
-    let lastError = '';
-    for (const model of VISION_MODELS) {
-      const remaining = deadline - Date.now();
-      if (remaining < 3000) break;
-      let res: Response;
-      try {
-        res = await fetch(OPENROUTER_URL, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${apiKey}`,
-          },
-          body: JSON.stringify({
-            model,
-            messages: [{
-              role: 'user',
-              content: [
-                { type: 'image_url', image_url: { url: body.image } },
-                { type: 'text', text: PROMPT },
-              ],
-            }],
-            temperature: 0,
-            max_tokens: 2000,
-          }),
-          signal: AbortSignal.timeout(remaining),
-        });
-      } catch (err) {
-        lastError = `${model}: ${err instanceof Error ? err.message : 'timeout'}`;
-        continue;
-      }
-      if (res.status === 401 || res.status === 402) {
-        return new Response(JSON.stringify({ error: `Error OpenRouter ${res.status}: revisa OPENROUTER_API_KEY. ${await res.text()}` }), { status: 500, headers: CORS });
-      }
-      if (!res.ok) { lastError = `${model} ${res.status}: ${await res.text()}`; continue; }
-
-      // OpenRouter puede devolver 200 con un error del proveedor o contenido vacío → siguiente modelo
-      const data = await res.json() as {
-        choices?: { message?: { content?: string | null } }[];
-        error?: { message?: string };
-      };
-      const content = data.choices?.[0]?.message?.content ?? '';
-      // Extraer el bloque JSON aunque haya texto antes/después
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) { lastError = `${model}: ${data.error?.message ?? 'respuesta sin JSON'}`; continue; }
-      try { parsed = JSON.parse(jsonMatch[0]); break; }
-      catch { lastError = `${model}: JSON mal formado`; }
-    }
-
-    if (!parsed) {
-      return new Response(JSON.stringify({ error: `No se pudo analizar el ticket (modelos gratuitos saturados o sin respuesta). Inténtalo de nuevo. ${lastError}` }), { status: 503, headers: CORS });
+    // Todos los modelos en paralelo: gana el primero que devuelva JSON válido
+    const winner = new AbortController();
+    const signal = AbortSignal.any([winner.signal, AbortSignal.timeout(TIMEOUT_MS)]);
+    let parsed: Parsed;
+    try {
+      parsed = await Promise.any(VISION_MODELS.map(m => askModel(m, body.image!, apiKey, signal)));
+    } catch (err) {
+      const errors = err instanceof AggregateError ? err.errors as Error[] : [err as Error];
+      const auth = errors.find(e => e instanceof AuthError);
+      if (auth) return new Response(JSON.stringify({ error: auth.message }), { status: 500, headers: CORS });
+      return new Response(JSON.stringify({
+        error: `No se pudo analizar el ticket (modelos gratuitos saturados o sin respuesta). Inténtalo de nuevo. ${errors.map(e => e.message).join(' | ')}`,
+      }), { status: 503, headers: CORS });
+    } finally {
+      winner.abort(); // cancelar las peticiones que sigan en curso
     }
 
     // Filtro servidor: eliminar solo líneas de pago, cero y duplicados de pack
@@ -130,3 +140,5 @@ export default async function handler(req: Request): Promise<Response> {
     );
   }
 }
+
+export default { fetch: handler };
