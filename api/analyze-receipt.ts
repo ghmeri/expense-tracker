@@ -4,11 +4,13 @@ export const config = { runtime: 'edge' };
 const CORS = { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' };
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
 const VISION_MODELS = [
-  'nvidia/nemotron-nano-12b-v2-vl:free',       // OCR especializado
-  'google/gemma-4-26b-a4b-it:free',            // multimodal Google
   'google/gemma-4-31b-it:free',                // multimodal Google
+  'google/gemma-4-26b-a4b-it:free',            // multimodal Google
+  'qwen/qwen3.8-27b:free',                     // multimodal Qwen
   'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free', // multimodal NVIDIA
 ];
+// Las Edge Functions de Vercel deben empezar a responder en 25 s
+const DEADLINE_MS = 23_000;
 
 const PROMPT = `Analiza esta imagen de un ticket de compra y extrae los datos.
 Devuelve ÚNICAMENTE un objeto JSON válido (sin markdown, sin texto extra):
@@ -26,9 +28,6 @@ Reglas ESTRICTAS:
 - EXCLUYE líneas de desglose de pack/unidades (ej: "2 unitats x 3.85", "unitat x 1.49") — son informativas del cálculo, el precio ya está en la línea del producto.
 - Para productos por peso (ej: "0.424kg x 5.99/kg = 2.54") usa el precio final (2.54) y el nombre de la línea anterior.
 - Para descuentos usa un nombre descriptivo (ej: "Descuento 50% President", "Dto. Bultoni") y totalPrice negativo.
-- Normaliza los nombres: primera letra mayúscula, resto minúsculas.
-- El ticket puede estar en español, catalán u otro idioma.
-- total = importe final pagado (línea TOTAL, ya con descuentos aplicados).
 - Normaliza los nombres: primera letra mayúscula, resto minúsculas.
 - El ticket puede estar en español, catalán u otro idioma.
 - total = importe final pagado (línea TOTAL, ya con descuentos aplicados).`;
@@ -59,51 +58,59 @@ export default async function handler(req: Request): Promise<Response> {
   }
 
   try {
-    let result: Response | null = null;
+    const deadline = Date.now() + DEADLINE_MS;
+    let parsed: { storeName?: string | null; total?: number; items?: { name?: string; totalPrice?: number }[] } | null = null;
     let lastError = '';
     for (const model of VISION_MODELS) {
-      const res = await fetch(OPENROUTER_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          model,
-          messages: [{
-            role: 'user',
-            content: [
-              { type: 'image_url', image_url: { url: body.image } },
-              { type: 'text', text: PROMPT },
-            ],
-          }],
-          temperature: 0,
-          max_tokens: 2000,
-        }),
-      });
-      if (res.ok) { result = res; break; }
-      lastError = await res.text();
-      // 400/404 = modelo no disponible, 429/503 = límite de cuota → intentar siguiente
-      if (res.status !== 429 && res.status !== 503 && res.status !== 404 && res.status !== 400) {
-        return new Response(JSON.stringify({ error: `Error OpenRouter ${res.status}: ${lastError}` }), { status: 500, headers: CORS });
+      const remaining = deadline - Date.now();
+      if (remaining < 3000) break;
+      let res: Response;
+      try {
+        res = await fetch(OPENROUTER_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`,
+          },
+          body: JSON.stringify({
+            model,
+            messages: [{
+              role: 'user',
+              content: [
+                { type: 'image_url', image_url: { url: body.image } },
+                { type: 'text', text: PROMPT },
+              ],
+            }],
+            temperature: 0,
+            max_tokens: 2000,
+          }),
+          signal: AbortSignal.timeout(remaining),
+        });
+      } catch (err) {
+        lastError = `${model}: ${err instanceof Error ? err.message : 'timeout'}`;
+        continue;
       }
+      if (res.status === 401 || res.status === 402) {
+        return new Response(JSON.stringify({ error: `Error OpenRouter ${res.status}: revisa OPENROUTER_API_KEY. ${await res.text()}` }), { status: 500, headers: CORS });
+      }
+      if (!res.ok) { lastError = `${model} ${res.status}: ${await res.text()}`; continue; }
+
+      // OpenRouter puede devolver 200 con un error del proveedor o contenido vacío → siguiente modelo
+      const data = await res.json() as {
+        choices?: { message?: { content?: string | null } }[];
+        error?: { message?: string };
+      };
+      const content = data.choices?.[0]?.message?.content ?? '';
+      // Extraer el bloque JSON aunque haya texto antes/después
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) { lastError = `${model}: ${data.error?.message ?? 'respuesta sin JSON'}`; continue; }
+      try { parsed = JSON.parse(jsonMatch[0]); break; }
+      catch { lastError = `${model}: JSON mal formado`; }
     }
 
-    if (!result) {
-      return new Response(JSON.stringify({ error: `Sin modelos disponibles. ${lastError}` }), { status: 429, headers: CORS });
+    if (!parsed) {
+      return new Response(JSON.stringify({ error: `No se pudo analizar el ticket (modelos gratuitos saturados o sin respuesta). Inténtalo de nuevo. ${lastError}` }), { status: 503, headers: CORS });
     }
-
-    const data = await result.json() as {
-      choices: { message: { content: string } }[];
-    };
-
-    const content = data.choices?.[0]?.message?.content ?? '';
-    // Extraer el bloque JSON aunque haya texto antes/después
-    const jsonMatch = content.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      return new Response(JSON.stringify({ error: 'El modelo no devolvió JSON válido. Inténtalo de nuevo.' }), { status: 500, headers: CORS });
-    }
-    const parsed = JSON.parse(jsonMatch[0]);
 
     // Filtro servidor: eliminar solo líneas de pago, cero y duplicados de pack
     const PAYMENT_RE = /^\s*(targetes?|tarjeta|efectiu|efectivo|cash|carvi|total|subtotal|iva|igf)/i;

@@ -9,9 +9,9 @@ export interface OCRResult {
 
 /**
  * Envía la imagen a nuestro endpoint /api/analyze-receipt (Vercel Edge Function)
- * que usa Google Gemini 1.5 Flash para extraer productos y total del ticket.
+ * que usa modelos de visión gratuitos de OpenRouter para extraer productos y total del ticket.
  *
- * Requiere que la variable de entorno GEMINI_API_KEY esté configurada en Vercel.
+ * Requiere que la variable de entorno OPENROUTER_API_KEY esté configurada en Vercel.
  */
 export const analyzeReceiptImage = async (base64Image: string): Promise<OCRResult> => {
   const response = await fetch('/api/analyze-receipt', {
@@ -25,7 +25,10 @@ export const analyzeReceiptImage = async (base64Image: string): Promise<OCRResul
   try {
     data = JSON.parse(raw);
   } catch {
-    throw new Error(raw.slice(0, 200) || `Error ${response.status} al analizar el ticket`);
+    // Respuesta no-JSON (p. ej. timeout 504 de Vercel)
+    throw new Error(response.status === 504
+      ? 'El análisis tardó demasiado. Inténtalo de nuevo.'
+      : raw.slice(0, 200) || `Error ${response.status} al analizar el ticket`);
   }
 
   if (!response.ok || data.error) {

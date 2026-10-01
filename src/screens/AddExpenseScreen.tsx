@@ -28,14 +28,16 @@ const CATEGORIES: { label: string; value: Category; icon: string }[] = [
   { label: 'Otros', value: 'otros', icon: '📦' },
 ];
 
-/** Redimensiona la imagen a max 800px y calidad 0.6 → base64 */
+/** Redimensiona la imagen a max 1600px y calidad 0.8 → base64 (suficiente para leer la letra del ticket) */
 const resizeImage = (file: File): Promise<string> =>
-  new Promise(resolve => {
+  new Promise((resolve, reject) => {
     const reader = new FileReader();
+    reader.onerror = () => reject(new Error('No se pudo leer la imagen.'));
     reader.onload = e => {
       const img = new Image();
+      img.onerror = () => reject(new Error('Formato de imagen no soportado. Prueba con una foto JPG o PNG.'));
       img.onload = () => {
-        const maxSize = 800;
+        const maxSize = 1600;
         let { width, height } = img;
         if (width > maxSize || height > maxSize) {
           if (width > height) { height = Math.round((height / width) * maxSize); width = maxSize; }
@@ -45,7 +47,7 @@ const resizeImage = (file: File): Promise<string> =>
         canvas.width = width;
         canvas.height = height;
         canvas.getContext('2d')!.drawImage(img, 0, 0, width, height);
-        resolve(canvas.toDataURL('image/jpeg', 0.6));
+        resolve(canvas.toDataURL('image/jpeg', 0.8));
       };
       img.src = e.target!.result as string;
     };
@@ -114,7 +116,13 @@ export default function AddExpenseScreen({ onSave }: Props) {
 
   const handleFile = useCallback(async (file: File | undefined) => {
     if (!file) return;
-    const resized = await resizeImage(file);
+    let resized: string;
+    try { resized = await resizeImage(file); }
+    catch (err) {
+      setOcrError(err instanceof Error ? err.message : 'No se pudo leer la imagen.');
+      setStep('review');
+      return;
+    }
     setImageUri(resized);
     await runOCR(resized);
   }, [runOCR]);
