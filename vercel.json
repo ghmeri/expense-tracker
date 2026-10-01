@@ -10,7 +10,7 @@
   ],
   "functions": {
     "api/analyze-receipt.ts": {
-      "maxDuration": 60
+      "maxDuration": 300
     }
   }
 }
